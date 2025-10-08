@@ -385,7 +385,7 @@
           accelY = 0;
         if (useGyro) {
           // use tilt.x tilt.y; tilt range approx -1..1
-          const sensitivity = Math.min(W, H) / 35; // tuned
+          const sensitivity = Math.min(W, H) / 200; // tuned
           accelX = tilt.x * sensitivity;
           accelY = tilt.y * sensitivity;
         } else {
