@@ -185,7 +185,7 @@
 
           <input
             id="nameInput"
-            placeholder="이름을 입력해주세요 (예: 철수)"
+            placeholder="학번과 이름을 입력해주세요 (예: 21322 전규현)"
             maxlength="30"
           />
 
@@ -283,7 +283,7 @@
         // choose side: 0=top,1=right,2=bottom,3=left
         const side = Math.floor(Math.random() * 4);
         let x, y, vx, vy;
-        const speed = rand(0.45, 1.2) * (Math.min(W, H) / 800 + 0.6); // 느리지 않게, 화면크기 고려
+        const speed = rand(0.09, 1.2) * (Math.min(W, H) / 800 + 0.6); // 느리지 않게, 화면크기 고려
         const size = Math.max(
           12,
           Math.min(
@@ -385,12 +385,12 @@
           accelY = 0;
         if (useGyro) {
           // use tilt.x tilt.y; tilt range approx -1..1
-          const sensitivity = Math.min(W, H) / 7; // tuned
+          const sensitivity = Math.min(W, H) / 35; // tuned
           accelX = tilt.x * sensitivity;
           accelY = tilt.y * sensitivity;
         } else {
           // keyboard fallback: arrow keys or WASD
-          const speed = Math.min(W, H) / 6;
+          const speed = Math.min(W, H) / 35;
           if (keys['arrowleft'] || keys['a']) accelX = -speed;
           if (keys['arrowright'] || keys['d']) accelX = speed;
           if (keys['arrowup'] || keys['w']) accelY = -speed;
@@ -428,31 +428,21 @@
         for (const b of birds) {
           ctx.save();
           ctx.translate(b.x, b.y);
-          ctx.rotate(Math.sin(b.angle) * 0.25);
-          // simple bird: triangle + circle (placeholder)
-          ctx.beginPath();
-          ctx.fillStyle = 'rgba(255,255,255,0.95)';
-          ctx.arc(0, 0, b.r, 0, Math.PI * 2);
-          ctx.fill();
-          // wing
-          ctx.fillStyle = 'rgba(160,160,160,0.95)';
-          ctx.beginPath();
-          ctx.moveTo(-b.r * 0.4, -b.r * 0.2);
-          ctx.lineTo(-b.r * 1.0, -b.r * 0.9);
-          ctx.lineTo(b.r * 0.1, -b.r * 0.2);
-          ctx.fill();
+          ctx.rotate(Math.sin(b.angle) * 0.15);
+          ctx.drawImage(seagullImg, -b.r, -b.r, b.r * 2, b.r * 2);
           ctx.restore();
         }
 
         // draw player (placeholder circle with outline)
         ctx.save();
-        ctx.beginPath();
-        ctx.fillStyle = '#1e90ff';
-        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-        ctx.lineWidth = Math.max(3, Math.round(player.r * 0.12));
-        ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+        ctx.translate(player.x, player.y);
+        ctx.drawImage(
+          playerImg,
+          -player.r,
+          -player.r,
+          player.r * 2,
+          player.r * 2
+        );
         ctx.restore();
       }
 
