@@ -385,12 +385,12 @@
           accelY = 0;
         if (useGyro) {
           // use tilt.x tilt.y; tilt range approx -1..1
-          const sensitivity = Math.min(W, H) / 100; // tuned
+          const sensitivity = Math.min(W, H) / 35; // tuned
           accelX = tilt.x * sensitivity;
           accelY = tilt.y * sensitivity;
         } else {
           // keyboard fallback: arrow keys or WASD
-          const speed = Math.min(W, H) / 100;
+          const speed = Math.min(W, H) / 35;
           if (keys['arrowleft'] || keys['a']) accelX = -speed;
           if (keys['arrowright'] || keys['d']) accelX = speed;
           if (keys['arrowup'] || keys['w']) accelY = -speed;
