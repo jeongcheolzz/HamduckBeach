@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <title>갈매기 피하기 - 게임</title>
+    <style>
+      :root {
+        --bg-overlay: rgba(0, 0, 0, 0.35);
+        --panel-bg: rgba(255, 255, 255, 0.97);
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: 'Gowun Dodum', 'Jua', sans-serif;
+        background: #000;
+        overflow: hidden;
+      }
+      #game-wrap {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        touch-action: none;
+        background: url('파도.gif') center/cover no-repeat fixed;
+      }
+      /* 상단 타이머 */
+      #hud {
+        position: absolute;
+        top: 3vh;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.75);
+        padding: 6px 12px;
+        border-radius: 10px;
+        font-size: 4.5vw;
+        font-weight: 700;
+        z-index: 30;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      }
+      /* 캔버스 */
+      canvas#gameCanvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      /* 게임 오버 모달 */
+      #overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0);
+        z-index: 40;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        transition: background 0.25s;
+      }
+      #modal {
+        width: 86vw;
+        max-width: 540px;
+        background: var(--panel-bg);
+        border-radius: 12px;
+        padding: 18px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+        transform: scale(0.96);
+        opacity: 0;
+        transition: all 0.18s;
+        pointer-events: auto;
+      }
+      #modal.show {
+        transform: scale(1);
+        opacity: 1;
+      }
+      #modal h2 {
+        margin: 0 0 8px 0;
+        font-size: 1.15rem;
+        text-align: center;
+      }
+      #modal .sub {
+        font-size: 0.95rem;
+        color: #333;
+        text-align: center;
+        margin-bottom: 12px;
+      }
+      /* 입력 & leaderboard */
+      #nameInput {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 1rem;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        margin-bottom: 10px;
+      }
+      #leaderboard {
+        max-height: 40vh;
+        overflow: auto;
+        border-top: 1px solid #eee;
+        padding-top: 10px;
+        margin-top: 8px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+      }
+      th,
+      td {
+        padding: 6px 8px;
+        text-align: left;
+        border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
+      }
+      th.rank {
+        width: 12%;
+      }
+      th.name {
+        width: 50%;
+      }
+      th.time {
+        width: 38%;
+        text-align: right;
+      }
+      tr {
+        background: transparent;
+      }
+      /* 버튼 row */
+      .btn-row {
+        display: flex;
+        gap: 12px;
+        margin-top: 12px;
+      }
+      .btn {
+        flex: 1;
+        padding: 10px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        border: none;
+        font-weight: 700;
+      }
+      .btn.restart {
+        background: #00aaff;
+        color: white;
+      }
+      .btn.home {
+        background: #f0f0f0;
+        color: #111;
+      }
+      /* 안내 텍스트 (숨길 수 있음) */
+      #hint {
+        position: absolute;
+        left: 10px;
+        bottom: 8vh;
+        font-size: 3.5vw;
+        color: #fff;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+        z-index: 20;
+      }
+      /* small screen adjustments */
+      @media (min-width: 600px) {
+        #hud {
+          font-size: 22px;
+        }
+        #modal h2 {
+          font-size: 1.25rem;
+        }
+        #hint {
+          font-size: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-wrap">
+      <div id="hud">0.0s</div>
+      <canvas id="gameCanvas"></canvas>
+
+      <!-- overlay/modal 비활성 상태(투명) -->
+      <div id="overlay" aria-hidden="true">
+        <div id="modal" role="dialog" aria-modal="true">
+          <h2>게임 종료</h2>
+          <div class="sub">생존 시간: <span id="finalTime">0.0</span> 초</div>
+
+          <input
+            id="nameInput"
+            placeholder="이름을 입력해주세요 (예: 철수)"
+            maxlength="30"
+          />
+
+          <div id="leaderboard">
+            <table>
+              <thead>
+                <tr>
+                  <th class="rank">등수</th>
+                  <th class="name">이름</th>
+                  <th class="time">기록(초)</th>
+                </tr>
+              </thead>
+              <tbody id="lbBody"></tbody>
+            </table>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn restart" id="restartBtn">재시작</button>
+            <button class="btn home" id="homeBtn">홈으로</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 숨겨진 유튜브 플레이어 (파도/음악) : display none 없이 width/height 0으로 둠 -->
+      <iframe
+        id="wavePlayer"
+        src="https://www.youtube.com/embed/n4Mdh3TEq_k?enablejsapi=1&loop=1&playlist=n4Mdh3TEq_k"
+        width="0"
+        height="0"
+        frameborder="0"
+        allow="autoplay"
+      ></iframe>
+      <iframe
+        id="musicPlayer"
+        src="https://www.youtube.com/embed/MWRb7zOxxdg?enablejsapi=1&loop=1&playlist=MWRb7zOxxdg"
+        width="0"
+        height="0"
+        frameborder="0"
+        allow="autoplay"
+      ></iframe>
+
+      <!-- 간단 안내 -->
+      <div id="hint">기울여서 이동하세요 — 데스크탑은 화살표/wasd 사용</div>
+    </div>
+
+    <script>
+      /* ====== 게임 설정 ====== */
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d', { alpha: true });
+      let W = (canvas.width = innerWidth);
+      let H = (canvas.height = innerHeight);
+
+      window.addEventListener('resize', () => {
+        W = canvas.width = innerWidth;
+        H = canvas.height = innerHeight;
+      });
+
+      /* 플레이어 (임시 이미지로 원으로 표시) */
+      const player = {
+        x: W / 2,
+        y: H * 0.75,
+        r: Math.max(20, Math.min(48, Math.round(Math.min(W, H) * 0.05))),
+        vx: 0,
+        vy: 0,
+      };
+
+      /* 갈매기 리스트 */
+      const birds = [];
+
+      /* 스폰 제어 */
+      let spawnInterval = 1500; // 초기 스폰 간격 ms
+      let spawnTimer = 0;
+      let spawnAcceleration = 0.985; // 시간이 흐를수록 간격이 줄어듦 (값<1이면 빠르게)
+      const minSpawnInterval = 450;
+
+      /* 게임 루프, 시간 측정 */
+      let running = true;
+      let startTime = null;
+      let elapsed = 0;
+      let displayTimerEl = document.getElementById('hud');
+      let lastFrame = performance.now();
+
+      /* 충돌 반지름 계산 */
+      function dist(a, b) {
+        return Math.hypot(a.x - b.x, a.y - b.y);
+      }
+
+      /* 랜덤 헬퍼 */
+      function rand(min, max) {
+        return Math.random() * (max - min) + min;
+      }
+
+      /* 갈매기 생성: 화면 바깥에서 랜덤 위치, 화면쪽으로 향하는 속도 */
+      function spawnBird() {
+        // choose side: 0=top,1=right,2=bottom,3=left
+        const side = Math.floor(Math.random() * 4);
+        let x, y, vx, vy;
+        const speed = rand(0.45, 1.2) * (Math.min(W, H) / 800 + 0.6); // 느리지 않게, 화면크기 고려
+        const size = Math.max(
+          12,
+          Math.min(
+            36,
+            Math.round(rand(Math.min(W, H) * 0.018, Math.min(W, H) * 0.035))
+          )
+        );
+        if (side === 0) {
+          // top
+          x = rand(-0.05 * W, 1.05 * W);
+          y = -size * 2;
+          vx = rand(-0.5, 0.5);
+          vy = speed;
+        } else if (side === 1) {
+          // right
+          x = W + size * 2;
+          y = rand(-0.05 * H, 1.05 * H);
+          vx = -speed;
+          vy = rand(-0.5, 0.5);
+        } else if (side === 2) {
+          // bottom
+          x = rand(-0.05 * W, 1.05 * W);
+          y = H + size * 2;
+          vx = rand(-0.5, 0.5);
+          vy = -speed;
+        } else {
+          // left
+          x = -size * 2;
+          y = rand(-0.05 * H, 1.05 * H);
+          vx = speed;
+          vy = rand(-0.5, 0.5);
+        }
+        // direction tweak: aim a bit towards center also
+        const toCenterX = (W / 2 - x) * rand(0.02, 0.06);
+        const toCenterY = (H / 2 - y) * rand(0.02, 0.06);
+        vx += toCenterX;
+        vy += toCenterY;
+
+        birds.push({ x, y, vx, vy, r: size, angle: 0, img: null });
+      }
+
+      /* 플레이어 이동 제어: 자이로 + 키보드 fallback */
+      let tilt = { x: 0, y: 0 }; // gamma (left-right) beta (front-back) mapped
+      let useGyro = false;
+
+      function handleOrientation(e) {
+        // gamma: left-right (-90 to 90), beta: front-back (-180 to 180)
+        const g = e.gamma || 0;
+        const b = e.beta || 0;
+        // map to -1..1
+        tilt.x = Math.max(-40, Math.min(40, g)) / 40; // left(-) right(+)
+        tilt.y = Math.max(-40, Math.min(40, b - 45)) / 40; // - further tilt forward gives +?
+        useGyro = true;
+      }
+      window.addEventListener('deviceorientation', handleOrientation, true);
+
+      /* 키보드 fallback */
+      const keys = {};
+      window.addEventListener('keydown', (e) => {
+        keys[e.key.toLowerCase()] = true;
+      });
+      window.addEventListener('keyup', (e) => {
+        keys[e.key.toLowerCase()] = false;
+      });
+
+      /* 메인 업데이트/렌더 루프 */
+      function update(dt) {
+        if (!running) return;
+        // timer
+        if (startTime === null) startTime = performance.now();
+        elapsed = (performance.now() - startTime) / 1000;
+
+        // spawn logic
+        spawnTimer += dt;
+        if (spawnTimer >= spawnInterval) {
+          spawnBird();
+          spawnTimer = 0;
+          spawnInterval = Math.max(
+            minSpawnInterval,
+            spawnInterval * spawnAcceleration
+          );
+        }
+
+        // update birds
+        for (let i = birds.length - 1; i >= 0; i--) {
+          const b = birds[i];
+          b.x += b.vx * dt * 0.06 * 60; // normalize to 60fps base
+          b.y += b.vy * dt * 0.06 * 60;
+          b.angle += 0.02;
+          // remove if far outside
+          if (b.x < -b.r * 4 && b.vx < 0) birds.splice(i, 1);
+          else if (b.x > W + b.r * 4 && b.vx > 0) birds.splice(i, 1);
+          else if (b.y < -b.r * 4 && b.vy < 0) birds.splice(i, 1);
+          else if (b.y > H + b.r * 4 && b.vy > 0) birds.splice(i, 1);
+        }
+
+        // player movement
+        let accelX = 0,
+          accelY = 0;
+        if (useGyro) {
+          // use tilt.x tilt.y; tilt range approx -1..1
+          const sensitivity = Math.min(W, H) / 7; // tuned
+          accelX = tilt.x * sensitivity;
+          accelY = tilt.y * sensitivity;
+        } else {
+          // keyboard fallback: arrow keys or WASD
+          const speed = Math.min(W, H) / 6;
+          if (keys['arrowleft'] || keys['a']) accelX = -speed;
+          if (keys['arrowright'] || keys['d']) accelX = speed;
+          if (keys['arrowup'] || keys['w']) accelY = -speed;
+          if (keys['arrowdown'] || keys['s']) accelY = speed;
+        }
+        // smoothing velocity & clamp
+        player.vx += (accelX - player.vx) * 0.12;
+        player.vy += (accelY - player.vy) * 0.12;
+        player.x += player.vx * dt * 0.06 * 60;
+        player.y += player.vy * dt * 0.06 * 60;
+
+        // clamp inside screen
+        player.x = Math.max(player.r, Math.min(W - player.r, player.x));
+        player.y = Math.max(player.r, Math.min(H - player.r, player.y));
+
+        // collision detect (circle vs circle)
+        for (const b of birds) {
+          const d = Math.hypot(player.x - b.x, player.y - b.y);
+          if (d < player.r + b.r * 0.8) {
+            // hit
+            endGame();
+            break;
+          }
+        }
+
+        // update HUD
+        displayTimerEl.textContent = elapsed.toFixed(1) + 's';
+      }
+
+      function render() {
+        // clear
+        ctx.clearRect(0, 0, W, H);
+
+        // draw birds
+        for (const b of birds) {
+          ctx.save();
+          ctx.translate(b.x, b.y);
+          ctx.rotate(Math.sin(b.angle) * 0.25);
+          // simple bird: triangle + circle (placeholder)
+          ctx.beginPath();
+          ctx.fillStyle = 'rgba(255,255,255,0.95)';
+          ctx.arc(0, 0, b.r, 0, Math.PI * 2);
+          ctx.fill();
+          // wing
+          ctx.fillStyle = 'rgba(160,160,160,0.95)';
+          ctx.beginPath();
+          ctx.moveTo(-b.r * 0.4, -b.r * 0.2);
+          ctx.lineTo(-b.r * 1.0, -b.r * 0.9);
+          ctx.lineTo(b.r * 0.1, -b.r * 0.2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // draw player (placeholder circle with outline)
+        ctx.save();
+        ctx.beginPath();
+        ctx.fillStyle = '#1e90ff';
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.lineWidth = Math.max(3, Math.round(player.r * 0.12));
+        ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      /* main loop */
+      function gameLoop(now) {
+        const dt = now - lastFrame;
+        lastFrame = now;
+        update(dt);
+        render();
+        if (running) requestAnimationFrame(gameLoop);
+      }
+
+      /* ====== 게임 종료 및 리더보드 처리 ====== */
+      const overlay = document.getElementById('overlay');
+      const modal = document.getElementById('modal');
+      const finalTimeEl = document.getElementById('finalTime');
+      const nameInput = document.getElementById('nameInput');
+      const lbBody = document.getElementById('lbBody');
+      const restartBtn = document.getElementById('restartBtn');
+      const homeBtn = document.getElementById('homeBtn');
+
+      function endGame() {
+        running = false;
+        finalTimeEl.textContent = elapsed.toFixed(1);
+        // show overlay darker
+        overlay.style.background = 'rgba(0,0,0,0.5)';
+        overlay.setAttribute('aria-hidden', 'false');
+        modal.classList.add('show');
+        // show existing leaderboard
+        populateLeaderboard();
+        // focus name input
+        setTimeout(() => nameInput.focus(), 200);
+      }
+
+      /* leaderboard in localStorage as array of {name, time} sorted desc by time */
+      const LS_KEY = 'seagull_leaderboard_v1';
+
+      function readLB() {
+        try {
+          const raw = localStorage.getItem(LS_KEY);
+          if (!raw) return [];
+          return JSON.parse(raw);
+        } catch (e) {
+          return [];
+        }
+      }
+      function saveLB(arr) {
+        localStorage.setItem(LS_KEY, JSON.stringify(arr));
+      }
+      function addRecord(name, time) {
+        const arr = readLB();
+        arr.push({ name: name || '무명', time: Number(time) });
+        // sort descending by time (largest first)
+        arr.sort((a, b) => b.time - a.time);
+        saveLB(arr);
+      }
+      function populateLeaderboard() {
+        const arr = readLB();
+        lbBody.innerHTML = '';
+        if (arr.length === 0) {
+          lbBody.innerHTML =
+            '<tr><td colspan="3" style="text-align:center;color:#666;padding:12px">기록이 없습니다</td></tr>';
+          return;
+        }
+        for (let i = 0; i < arr.length; i++) {
+          const r = arr[i];
+          const tr = document.createElement('tr');
+          const rank = document.createElement('td');
+          rank.className = 'rank';
+          rank.textContent = i + 1;
+          const nm = document.createElement('td');
+          nm.className = 'name';
+          nm.textContent = r.name;
+          const t = document.createElement('td');
+          t.className = 'time';
+          t.textContent = r.time.toFixed(1);
+          tr.appendChild(rank);
+          tr.appendChild(nm);
+          tr.appendChild(t);
+          lbBody.appendChild(tr);
+        }
+      }
+
+      /* 버튼 동작: 이름 입력 후 엔터로 저장 */
+      nameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          commitNameAndSave();
+        }
+      });
+      function commitNameAndSave() {
+        const n = nameInput.value.trim() || '무명';
+        addRecord(n, elapsed.toFixed(1));
+        populateLeaderboard();
+        // keep modal shown so player can see leaderboard and choose restart/home
+      }
+
+      /* 버튼 동작 */
+      restartBtn.addEventListener('click', () => {
+        // clear modal
+        modal.classList.remove('show');
+        overlay.style.background = 'rgba(0,0,0,0)';
+        overlay.setAttribute('aria-hidden', 'true');
+        resetGame();
+        // start loop again
+        running = true;
+        startTime = null;
+        spawnInterval = 1500;
+        spawnTimer = 0;
+        lastFrame = performance.now();
+        requestAnimationFrame(gameLoop);
+      });
+      homeBtn.addEventListener('click', () => {
+        // navigate home (index.html)
+        location.href = 'index.html';
+      });
+
+      /* reset game state */
+      function resetGame() {
+        birds.length = 0;
+        player.x = W / 2;
+        player.y = H * 0.75;
+        player.vx = 0;
+        player.vy = 0;
+        elapsed = 0;
+      }
+
+      /* ====== YouTube Players for sounds ====== */
+      /* we use iframe API so we can play/pause. Keep them hidden. */
+      let waveYT, musicYT;
+      function onYouTubeIframeAPIReady() {
+        waveYT = new YT.Player('wavePlayer', {
+          events: {
+            onReady: function (e) {
+              try {
+                e.target.setVolume(60);
+                e.target.playVideo();
+              } catch (err) {}
+            },
+          },
+        });
+        musicYT = new YT.Player('musicPlayer', {
+          events: {
+            onReady: function (e) {
+              try {
+                e.target.setVolume(70);
+                e.target.playVideo();
+              } catch (err) {}
+            },
+          },
+        });
+      }
+      // load youtube api
+      (function loadYT() {
+        const s = document.createElement('script');
+        s.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(s);
+      })();
+
+      /* 안전장치: 모바일에서 자동재생이 막힌 경우
+   사용자가 화면을 첫 터치하면 재생 허용시도 */
+      let firstTouchHandler = function () {
+        try {
+          if (waveYT && waveYT.playVideo) waveYT.playVideo();
+          if (musicYT && musicYT.playVideo) musicYT.playVideo();
+        } catch (e) {}
+        window.removeEventListener('touchstart', firstTouchHandler);
+      };
+      window.addEventListener('touchstart', firstTouchHandler, { once: true });
+
+      /* 시작 */
+      resetGame();
+      requestAnimationFrame(gameLoop);
+    </script>
+  </body>
+</html>
