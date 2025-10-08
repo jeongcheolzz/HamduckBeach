@@ -1,225 +1,223 @@
 <!DOCTYPE html>
 <html lang="ko">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>함덕해수욕장 가이드</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>함덕해수욕장 가이드</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap');
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Gowun Dodum', sans-serif;
+        overflow: hidden;
+      }
 
-    body {
-      font-family: 'Jua', sans-serif;
-      color: #000;
-      text-align: center;
-      overflow: hidden;
-      height: 100vh;
-      width: 100vw;
-      position: relative;
-    }
+      .background {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: url('파도.gif') center/cover no-repeat;
+        z-index: -1;
+      }
 
-    /* 🌊 배경 GIF */
-    .bg {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: -2;
-    }
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 5vh 2vw;
+        color: #000;
+      }
 
-    /* 반투명 오버레이 */
-    .overlay {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(255, 255, 255, 0.35);
-      z-index: -1;
-    }
+      h1 {
+        font-size: 2.2rem;
+        margin-top: 2rem;
+      }
 
-    /* 🔊 사운드 컨트롤 */
-    .sound-controls {
-      position: absolute;
-      top: 4vh;
-      right: 5vw;
-      text-align: right;
-      font-size: 3.5vw;
-      color: #333;
-      line-height: 1.6em;
-    }
+      .section {
+        margin-top: 2.5rem;
+      }
 
-    .sound-controls button {
-      background: none;
-      border: none;
-      font-size: 6vw;
-      cursor: pointer;
-      margin-left: 0.3em;
-    }
+      .sound-controls {
+        position: absolute;
+        top: 2vh;
+        right: 4vw;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 10px;
+      }
 
-    .main-title {
-      position: absolute;
-      top: 20vh;
-      width: 100%;
-      font-size: 7vw;
-      text-shadow: 2px 2px 6px rgba(255,255,255,0.8);
-    }
+      .sound-btn {
+        font-size: 1.1rem;
+        background: rgba(255, 255, 255, 0.6);
+        border-radius: 15px;
+        padding: 6px 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        user-select: none;
+      }
 
-    .info {
-      position: absolute;
-      top: 30vh;
-      width: 100%;
-      font-size: 3.8vw;
-    }
+      .sound-btn img {
+        width: 28px;
+        height: 28px;
+      }
 
-    .cafe-title {
-      position: absolute;
-      top: 55vh;
-      width: 100%;
-      font-size: 6vw;
-    }
+      .game-btn {
+        margin-top: 3rem;
+        background: rgba(255, 255, 255, 0.8);
+        padding: 1rem 2rem;
+        border-radius: 15px;
+        font-size: 1.3rem;
+        font-weight: bold;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        transition: 0.3s;
+      }
 
-    .cafe-info {
-      position: absolute;
-      top: 63vh;
-      width: 100%;
-      font-size: 3.8vw;
-    }
+      .game-btn:hover {
+        background: rgba(255, 255, 255, 1);
+        transform: scale(1.05);
+      }
 
-    .game {
-      position: absolute;
-      bottom: 8vh;
-      width: 100%;
-    }
+      .footer {
+        font-size: 0.95rem;
+        color: #444;
+        margin-top: 2rem;
+        max-width: 90%;
+        line-height: 1.5;
+      }
 
-    .game button {
-      background: #00aaff;
-      color: white;
-      font-size: 4.5vw;
-      padding: 12px 25px;
-      border: none;
-      border-radius: 15px;
-      cursor: pointer;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    }
+      .highlight {
+        color: red;
+        font-weight: bold;
+      }
 
-    .game p {
-      margin-top: 1em;
-      font-size: 3.3vw;
-      color: #222;
-      line-height: 1.4em;
-    }
+      iframe {
+        display: none;
+      }
 
-    .highlight {
-      color: red;
-      font-weight: bold;
-    }
+      @media (max-width: 768px) {
+        h1 {
+          font-size: 1.8rem;
+        }
+        .game-btn {
+          font-size: 1.1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="background"></div>
 
-    #player {
-      display: none;
-    }
-  </style>
-</head>
-<body>
-  <!-- 🌊 움직이는 배경 -->
-  <img src="파도.gif" alt="파도 배경" class="bg">
-  <div class="overlay"></div>
-
-  <!-- 🔊 사운드 컨트롤 -->
-  <div class="sound-controls">
-    <div>
-      파도소리 
-      <button id="waveToggle">🔇</button>
+    <div class="sound-controls">
+      <div id="waveToggle" class="sound-btn">
+        <span>🌊 파도소리</span>
+        <img
+          id="waveIcon"
+          src="https://img.icons8.com/ios-filled/50/000000/speaker.png"
+        />
+      </div>
+      <div id="musicToggle" class="sound-btn">
+        <span>🎵 음악소리</span>
+        <img
+          id="musicIcon"
+          src="https://img.icons8.com/ios-filled/50/000000/speaker.png"
+        />
+      </div>
     </div>
-    <div>
-      음악소리 
-      <button id="musicToggle">🔊</button><br>
-      프로미스나인 노래
+
+    <div class="container">
+      <h1>함덕해수욕장</h1>
+      <p>위치 이미지 첨부, 해수욕장 사진 첨부, 기본 정보 제공</p>
+
+      <div class="section">
+        <h2>근처 카페</h2>
+        <p>위치 이미지, 카페 사진, 메뉴판 이미지 첨부</p>
+      </div>
+
+      <div class="section">
+        <div class="game-btn" onclick="location.href='#'">
+          🎮 갈매기 피하기 게임하러 가기
+        </div>
+        <p class="footer">
+          사방에서 날아오는 갈매기를 피하고 생존 시간을 측정하여 리더보드에
+          기록하는 형식,
+          <span class="highlight">상위 3명에게 상품이 있었으면 좋겠음</span>
+        </p>
+      </div>
     </div>
-  </div>
 
-  <!-- 중앙 내용 -->
-  <div class="main-title">함덕해수욕장</div>
-  <div class="info">
-    위치 이미지 첨부, 해수욕장 사진 첨부,<br>
-    해수욕장 기본 정보
-  </div>
+    <!-- 유튜브 영상 (파도소리 / 음악소리) -->
+    <iframe
+      id="waveMusic"
+      width="0"
+      height="0"
+      src="https://www.youtube.com/embed/n4Mdh3TEq_k?enablejsapi=1&autoplay=1&loop=1"
+      frameborder="0"
+    ></iframe>
 
-  <div class="cafe-title">근처 카페</div>
-  <div class="cafe-info">
-    위치 이미지 첨부, 카페 사진 첨부,<br>
-    카페 기본 정보, 메뉴판 이미지 첨부
-  </div>
+    <iframe
+      id="bgMusic"
+      width="0"
+      height="0"
+      src="https://www.youtube.com/embed/MWRb7zOxxdg?enablejsapi=1&autoplay=1&loop=1"
+      frameborder="0"
+    ></iframe>
 
-  <div class="game">
-    <button onclick="location.href='game.html'">🎮 갈매기 피하기 게임하러 가기</button>
-    <p>
-      사방에서 날아오는 갈매기를 피하고 생존 시간을 측정하여 리더보드에 기록하는 형식,<br>
-      <span class="highlight">상위 3명에게 상품이 있었으면 좋겠음</span>
-    </p>
-  </div>
+    <script>
+      // 유튜브 API 로드
+      let tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      let firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-  <!-- 오디오 -->
-  <audio id="waveSound" src="assets/wave.mp3" loop></audio>
+      let wavePlayer, musicPlayer;
 
-  <!-- 유튜브 플레이어 -->
-  <div id="player"></div>
+      function onYouTubeIframeAPIReady() {
+        wavePlayer = new YT.Player('waveMusic', {
+          events: { onReady: () => wavePlayer.playVideo() },
+        });
+        musicPlayer = new YT.Player('bgMusic', {
+          events: { onReady: () => musicPlayer.playVideo() },
+        });
+      }
 
-  <script>
-    // ▶️ YouTube API 불러오기
-    let tag = document.createElement('script');
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.body.appendChild(tag);
+      const waveIcon = document.getElementById('waveIcon');
+      const musicIcon = document.getElementById('musicIcon');
+      let wavePlaying = true;
+      let musicPlaying = true;
 
-    let player;
-    function onYouTubeIframeAPIReady() {
-      player = new YT.Player('player', {
-        height: '0',
-        width: '0',
-        videoId: 'ZsYf4p7jb4Y', // 프로미스나인 - We Go
-        playerVars: {
-          'autoplay': 0,
-          'controls': 0
+      document.getElementById('waveToggle').addEventListener('click', () => {
+        wavePlaying = !wavePlaying;
+        if (wavePlaying) {
+          wavePlayer.playVideo();
+          waveIcon.src =
+            'https://img.icons8.com/ios-filled/50/000000/speaker.png';
+        } else {
+          wavePlayer.pauseVideo();
+          waveIcon.src = 'https://img.icons8.com/ios-filled/50/000000/mute.png';
         }
       });
-    }
 
-    const waveAudio = document.getElementById('waveSound');
-    const waveBtn = document.getElementById('waveToggle');
-    const musicBtn = document.getElementById('musicToggle');
-
-    let wavePlaying = false;
-    let musicPlaying = false;
-
-    // 🌊 파도소리 토글
-    waveBtn.addEventListener('click', () => {
-      if (wavePlaying) {
-        waveAudio.pause();
-        waveBtn.textContent = '🔇';
-      } else {
-        waveAudio.play();
-        waveBtn.textContent = '🔊';
-      }
-      wavePlaying = !wavePlaying;
-    });
-
-    // 🎵 유튜브 음악 토글
-    musicBtn.addEventListener('click', () => {
-      if (!player) return;
-      if (musicPlaying) {
-        player.pauseVideo();
-        musicBtn.textContent = '🔇';
-      } else {
-        player.playVideo();
-        musicBtn.textContent = '🔊';
-      }
-      musicPlaying = !musicPlaying;
-    });
-  </script>
-</body>
+      document.getElementById('musicToggle').addEventListener('click', () => {
+        musicPlaying = !musicPlaying;
+        if (musicPlaying) {
+          musicPlayer.playVideo();
+          musicIcon.src =
+            'https://img.icons8.com/ios-filled/50/000000/speaker.png';
+        } else {
+          musicPlayer.pauseVideo();
+          musicIcon.src =
+            'https://img.icons8.com/ios-filled/50/000000/mute.png';
+        }
+      });
+    </script>
+  </body>
 </html>
