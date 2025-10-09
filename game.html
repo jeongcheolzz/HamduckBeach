@@ -154,6 +154,91 @@
         background: transparent;
       }
 
+      /* ---------- leaderboard top 3 styles ---------- */
+      /* tr 자체 스타일 (배경/테두리/애니메이션) */
+      #lbBody tr.rank-1 td,
+      #lbBody tr.rank-2 td,
+      #lbBody tr.rank-3 td {
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        border-radius: 8px;
+      }
+
+      /* hover 효과 (선택사항) */
+      #lbBody tr.rank-1:hover,
+      #lbBody tr.rank-2:hover,
+      #lbBody tr.rank-3:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+      }
+
+      /* 1등 */
+      #lbBody tr.rank-1 {
+        background: linear-gradient(90deg, #fff7e6, #fff0c2);
+      }
+      #lbBody tr.rank-1 .rank {
+        font-weight: 900;
+        font-size: 1.15rem;
+        color: #b57800; /* gold-ish */
+      }
+      #lbBody tr.rank-1 .name {
+        font-weight: 800;
+        font-size: 1.05rem;
+      }
+      #lbBody tr.rank-1 .time {
+        font-weight: 800;
+        font-size: 1.05rem;
+      }
+
+      /* 2등 */
+      #lbBody tr.rank-2 {
+        background: linear-gradient(90deg, #f6f8fb, #e9eef6);
+      }
+      #lbBody tr.rank-2 .rank {
+        font-weight: 800;
+        font-size: 1.05rem;
+        color: #7d8aa3; /* silver-ish */
+      }
+      #lbBody tr.rank-2 .name,
+      #lbBody tr.rank-2 .time {
+        font-weight: 700;
+      }
+
+      /* 3등 */
+      #lbBody tr.rank-3 {
+        background: linear-gradient(90deg, #fff6f1, #ffeadd);
+      }
+      #lbBody tr.rank-3 .rank {
+        font-weight: 800;
+        font-size: 1.02rem;
+        color: #a05500; /* bronze-ish */
+      }
+      #lbBody tr.rank-3 .name,
+      #lbBody tr.rank-3 .time {
+        font-weight: 700;
+      }
+
+      /* medal/icon cell 스타일 (rank cell 가운데 정렬) */
+      #lbBody td.rank {
+        text-align: center;
+        vertical-align: middle;
+        font-size: 0.95rem;
+      }
+
+      /* 1~3등에 메달 이모지 크기 키우기 */
+      #lbBody tr.rank-1 td.rank::before,
+      #lbBody tr.rank-2 td.rank::before,
+      #lbBody tr.rank-3 td.rank::before {
+        display: inline-block;
+        margin-right: 6px;
+        font-size: 1.15rem;
+        transform: translateY(1px);
+      }
+
+      /* 숨김 처리(스마트): 일반 행과의 구분을 더 부드럽게 */
+      #lbBody tr:not(.rank-1):not(.rank-2):not(.rank-3) td {
+        opacity: 0.95;
+      }
+
       /* 버튼 row */
       .btn-row {
         display: flex;
@@ -679,28 +764,50 @@
       }
 
       function populateLeaderboard() {
-        const arr = readLB();
+        const arr = readLB(); // 기존 로컬 readLB() 반환 사용
         lbBody.innerHTML = '';
-        if (arr.length === 0) {
+
+        if (!arr || arr.length === 0) {
           lbBody.innerHTML =
             '<tr><td colspan="3" style="text-align:center;color:#666;padding:12px">기록이 없습니다</td></tr>';
           return;
         }
+
         for (let i = 0; i < arr.length; i++) {
           const r = arr[i];
           const tr = document.createElement('tr');
-          const rank = document.createElement('td');
-          rank.className = 'rank';
-          rank.textContent = i + 1;
+
+          // top3 클래스 추가
+          if (i === 0) tr.classList.add('rank-1');
+          else if (i === 1) tr.classList.add('rank-2');
+          else if (i === 2) tr.classList.add('rank-3');
+
+          // rank cell (등수 + 메달 아이콘)
+          const rankTd = document.createElement('td');
+          rankTd.className = 'rank';
+          // 메달/아이콘 텍스트: emoji 사용 (깨끗하고 외부 리소스 불필요)
+          let medal = '';
+          if (i === 0) medal = '🥇';
+          else if (i === 1) medal = '🥈';
+          else if (i === 2) medal = '🥉';
+          // 등수 + 메달: 메달이 있으면 앞에 붙임
+          rankTd.innerHTML = (medal ? `${medal} ` : '') + (i + 1);
+
+          // name cell
           const nm = document.createElement('td');
           nm.className = 'name';
           nm.textContent = r.name;
+
+          // time cell (오른쪽 정렬)
           const t = document.createElement('td');
           t.className = 'time';
-          t.textContent = r.time.toFixed(1);
-          tr.appendChild(rank);
+          t.style.textAlign = 'right';
+          t.textContent = Number(r.time).toFixed(1);
+
+          tr.appendChild(rankTd);
           tr.appendChild(nm);
           tr.appendChild(t);
+
           lbBody.appendChild(tr);
         }
       }
