@@ -595,7 +595,7 @@
         if (useGyro) {
           const normX = tilt.x / 40; // -1..1
           const normY = tilt.y / 40;
-          const sensitivity = Math.min(W, H) / 450;
+          const sensitivity = Math.min(W, H) / 600;
           accelX = normX * sensitivity;
           accelY = normY * sensitivity;
         } else {
