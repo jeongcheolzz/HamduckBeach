@@ -422,6 +422,9 @@
       let spawnAcceleration = 0.985;
       const minSpawnInterval = 450;
 
+      // 충돌 감도 설정 (작을수록 충돌판정이 작아짐 — 조정 가능)
+      const COLLISION_FACTOR = { player: 0.85, bird: 0.55 };
+
       /* 게임 루프, 시간 측정 */
       let running = true;
       let startTime = null;
@@ -618,7 +621,12 @@
         // collision detect
         for (const b of birds) {
           const d = Math.hypot(player.x - b.x, player.y - b.y);
-          if (d < player.r + b.r * 0.8) {
+
+          // effective radii: 이미지 투명/여백 때문에 실제 보이는 부분보다 작게 설정
+          const effectivePlayerR = player.r * COLLISION_FACTOR.player;
+          const effectiveBirdR = b.r * COLLISION_FACTOR.bird;
+
+          if (d < effectivePlayerR + effectiveBirdR) {
             endGame();
             break;
           }
