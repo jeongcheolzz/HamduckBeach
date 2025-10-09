@@ -287,6 +287,7 @@
       const ctx = canvas.getContext('2d', { alpha: true });
       let W = (canvas.width = innerWidth);
       let H = (canvas.height = innerHeight);
+      let hasSavedThisRun = false;
 
       window.addEventListener('resize', () => {
         W = canvas.width = innerWidth;
@@ -511,7 +512,7 @@
           accelY = normY * sensitivity;
         } else {
           // 키보드 fallback (데스크탑 테스트용)
-          const speed = Math.min(W, H) / 35;
+          const speed = Math.min(W, H) * 50;
           if (keys['arrowleft'] || keys['a']) accelX = -speed;
           if (keys['arrowright'] || keys['d']) accelX = speed;
           if (keys['arrowup'] || keys['w']) accelY = -speed;
@@ -621,12 +622,52 @@
       function saveLB(arr) {
         localStorage.setItem(LS_KEY, JSON.stringify(arr));
       }
+      // 기존 addRecord 함수 대신 이걸로 교체
+      // 반환값: true = 새로 추가/업데이트됨, false = 아무 일도 안 일어남(기존 기록이 더 높음)
       function addRecord(name, time) {
-        const arr = readLB();
-        arr.push({ name: name || '무명', time: Number(time) });
-        arr.sort((a, b) => b.time - a.time);
-        saveLB(arr);
+        const t = Number(time);
+        // 읽기 (기존 readLB 함수가 있으면 그대로 사용해도 되지만, 안전하게 로컬에서 직접 읽음)
+        let arr = [];
+        try {
+          const raw = localStorage.getItem(LS_KEY);
+          arr = raw ? JSON.parse(raw) : [];
+        } catch (e) {
+          arr = [];
+        }
+
+        // 같은 이름(완전 일치) 찾기
+        const idx = arr.findIndex((r) => r.name === name);
+
+        if (idx !== -1) {
+          // 이미 기록 존재 -> 새 기록이 더 크면 교체(우리는 생존시간이 크면 좋은 것으로 취급)
+          if (Number(arr[idx].time) < t) {
+            // 삭제 후 추가(정렬을 위해)
+            arr.splice(idx, 1);
+            arr.push({ name, time: t });
+            arr.sort((a, b) => b.time - a.time);
+            try {
+              localStorage.setItem(LS_KEY, JSON.stringify(arr));
+            } catch (e) {
+              console.error(e);
+            }
+            return true; // 업데이트됨
+          } else {
+            // 기존 기록이 같거나 높음 -> 아무 일도 안 함
+            return false;
+          }
+        } else {
+          // 신규 이름 -> 추가
+          arr.push({ name, time: t });
+          arr.sort((a, b) => b.time - a.time);
+          try {
+            localStorage.setItem(LS_KEY, JSON.stringify(arr));
+          } catch (e) {
+            console.error(e);
+          }
+          return true;
+        }
       }
+
       function populateLeaderboard() {
         const arr = readLB();
         lbBody.innerHTML = '';
@@ -654,13 +695,41 @@
         }
       }
 
+      // helper: 입력 잠금/해제
+      function disableNameInput() {
+        nameInput.disabled = true;
+        nameInput.style.opacity = 0.6;
+      }
+      function enableNameInput() {
+        nameInput.disabled = false;
+        nameInput.style.opacity = 1;
+      }
+
+      // 엔터 처리: 기존 리스너 대체
       nameInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') commitNameAndSave();
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commitNameAndSave();
+        }
       });
+
+      // commit 함수 (중복 입력 방지 포함)
       function commitNameAndSave() {
+        // 한 번만 동작
+        if (hasSavedThisRun) return;
+        hasSavedThisRun = true;
+
         const n = nameInput.value.trim() || '무명';
-        addRecord(n, elapsed.toFixed(1));
+        const didUpdate = addRecord(n, elapsed.toFixed(1)); // boolean
+
+        // 리더보드 갱신 (업데이트되든 아니든 최신 상태를 보여줌)
         populateLeaderboard();
+
+        // 입력 잠금 (한 번만)
+        disableNameInput();
+
+        // 선택적 알림: 업데이트가 안 되었음을 유저에게 알리고 싶으면 주석 해제
+        // if (!didUpdate) alert('기존 기록이 더 높습니다. 기록은 갱신되지 않았습니다.');
       }
 
       restartBtn.addEventListener('click', () => {
@@ -687,6 +756,11 @@
         player.vy = 0;
         elapsed = 0;
         calibration = null; // 재시작 시 캘리브레이션 다시 받도록
+
+        // 리셋 시 이름 입력 상태 초기화
+        hasSavedThisRun = false;
+        enableNameInput();
+        nameInput.value = '';
       }
 
       /* ====== YouTube Players for sounds ====== */
