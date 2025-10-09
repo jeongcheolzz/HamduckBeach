@@ -347,60 +347,29 @@
         return Math.random() * (max - min) + min;
       }
 
-      /* 갈매기 생성: 화면 바깥에서 랜덤 위치, 화면쪽으로 향하는 속도 */
-      function spawnBird() {
-        const side = Math.floor(Math.random() * 4);
-        let x, y, vx, vy;
-
-        // === 갈매기 속도: 기존보다 약 5배 더 느리게 설정 ===
-        const speed = rand(0.018, 0.048) * (Math.min(W, H) / 800 + 0.6);
-
-        const size = Math.max(
-          12,
-          Math.min(
-            36,
-            Math.round(rand(Math.min(W, H) * 0.018, Math.min(W, H) * 0.035))
-          )
-        );
-
-        if (side === 0) {
-          x = rand(-0.05 * W, 1.05 * W);
-          y = -size * 2;
-          vx = rand(-0.08, 0.08) + (W / 2 - x) * rand(0.002, 0.01);
-          vy = speed;
-        } else if (side === 1) {
-          x = W + size * 2;
-          y = rand(-0.05 * H, 1.05 * H);
-          vx = -speed;
-          vy = rand(-0.08, 0.08) + (H / 2 - y) * rand(0.002, 0.01);
-        } else if (side === 2) {
-          x = rand(-0.05 * W, 1.05 * W);
-          y = H + size * 2;
-          vx = rand(-0.08, 0.08) + (W / 2 - x) * rand(0.002, 0.01);
-          vy = -speed;
-        } else {
-          x = -size * 2;
-          y = rand(-0.05 * H, 1.05 * H);
-          vx = speed;
-          vy = rand(-0.08, 0.08) + (H / 2 - y) * rand(0.002, 0.01);
-        }
-
-        birds.push({ x, y, vx, vy, r: size, angle: 0, img: seagullImg });
-      }
-
-      /* 플레이어 이동 제어: 자이로 + 키보드 fallback */
-      let tilt = { x: 0, y: 0 };
+      /* ====== 새 동작: 캘리브레이션 변수 (핸드폰 수평을 중립으로) ====== */
+      let calibration = null; // {g, b} 저장
+      let tilt = { x: 0, y: 0 }; // raw deg offsets (not normalized)
       let useGyro = false;
 
       function handleOrientation(e) {
-        const g = e.gamma || 0;
-        const b = e.beta || 0;
-        tilt.x = Math.max(-40, Math.min(40, g)) / 40;
-        tilt.y = Math.max(-40, Math.min(40, b - 45)) / 40;
+        const g = typeof e.gamma === 'number' ? e.gamma : 0;
+        const b = typeof e.beta === 'number' ? e.beta : 0;
+
+        // 최초 이벤트에서 캘리브레이션 저장 -> 그 자세가 '중립'
+        if (!calibration) {
+          calibration = { g, b };
+        }
+
+        // tilt = current - calibration, clamped to [-40,40]
+        tilt.x = Math.max(-40, Math.min(40, g - calibration.g));
+        tilt.y = Math.max(-40, Math.min(40, b - calibration.b));
+
         useGyro = true;
       }
       window.addEventListener('deviceorientation', handleOrientation, true);
 
+      /* 키보드 fallback */
       const keys = {};
       window.addEventListener('keydown', (e) => {
         keys[e.key.toLowerCase()] = true;
@@ -408,6 +377,55 @@
       window.addEventListener('keyup', (e) => {
         keys[e.key.toLowerCase()] = false;
       });
+
+      /* 갈매기 생성: 화면 바깥에서 랜덤 위치, 시작 방향을 플레이어 쪽으로, 크기 3배 */
+      function spawnBird() {
+        const side = Math.floor(Math.random() * 4);
+        let x, y;
+
+        // 갈매기 이동 속도: 매우 느린 범위 (원하시면 미세 조정 가능)
+        const speed = rand(0.018, 0.048) * (Math.min(W, H) / 800 + 0.6);
+
+        // base size => 3배 확대
+        const base = Math.round(
+          rand(Math.min(W, H) * 0.018, Math.min(W, H) * 0.035)
+        );
+        // 3배 하되 화면비율로 상한을 둠
+        const r = Math.min(Math.max(12, base * 3), Math.min(W, H) * 0.28);
+
+        // spawn 위치 (outside)
+        if (side === 0) {
+          x = rand(-0.05 * W, 1.05 * W);
+          y = -r * 2;
+        } else if (side === 1) {
+          x = W + r * 2;
+          y = rand(-0.05 * H, 1.05 * H);
+        } else if (side === 2) {
+          x = rand(-0.05 * W, 1.05 * W);
+          y = H + r * 2;
+        } else {
+          x = -r * 2;
+          y = rand(-0.05 * H, 1.05 * H);
+        }
+
+        // 방향을 플레이어 쪽으로 향하게 (단위벡터 * speed)
+        let dx = player.x - x;
+        let dy = player.y - y;
+        let len = Math.hypot(dx, dy);
+        if (len < 1) {
+          dx = rand(-0.5, 0.5);
+          dy = rand(-0.5, 0.5);
+          len = Math.hypot(dx, dy) || 1;
+        }
+        let vx = (dx / len) * speed;
+        let vy = (dy / len) * speed;
+
+        // 약간 랜덤 흔들기
+        vx += rand(-0.01, 0.01);
+        vy += rand(-0.01, 0.01);
+
+        birds.push({ x, y, vx, vy, r, angle: 0, img: seagullImg });
+      }
 
       /* ====== 사운드 토글 UI 로직 ====== */
       let waveYT, musicYT;
@@ -483,13 +501,17 @@
         // player movement
         let accelX = 0,
           accelY = 0;
+
         if (useGyro) {
-          // 추가 감도 저감: 더 천천히 움직이도록
-          const sensitivity = Math.min(W, H) / 300; // 이전보다 더 낮춤
-          accelX = tilt.x * sensitivity;
-          accelY = tilt.y * sensitivity;
+          // 요청하신 감도: /300
+          const normX = tilt.x / 40; // -1..1
+          const normY = tilt.y / 40;
+          const sensitivity = Math.min(W, H) / 300;
+          accelX = normX * sensitivity;
+          accelY = normY * sensitivity;
         } else {
-          const speed = Math.min(W, H) / 300;
+          // 키보드 fallback (데스크탑 테스트용)
+          const speed = Math.min(W, H) / 35;
           if (keys['arrowleft'] || keys['a']) accelX = -speed;
           if (keys['arrowright'] || keys['d']) accelX = speed;
           if (keys['arrowup'] || keys['w']) accelY = -speed;
@@ -664,6 +686,7 @@
         player.vx = 0;
         player.vy = 0;
         elapsed = 0;
+        calibration = null; // 재시작 시 캘리브레이션 다시 받도록
       }
 
       /* ====== YouTube Players for sounds ====== */
@@ -719,5 +742,3 @@
     </script>
   </body>
 </html>
-
-
