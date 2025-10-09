@@ -593,10 +593,9 @@
           accelY = 0;
 
         if (useGyro) {
-          // 요청하신 감도: /300
           const normX = tilt.x / 40; // -1..1
           const normY = tilt.y / 40;
-          const sensitivity = Math.min(W, H) / 300;
+          const sensitivity = Math.min(W, H) / 450;
           accelX = normX * sensitivity;
           accelY = normY * sensitivity;
         } else {
