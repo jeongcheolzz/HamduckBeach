@@ -27,6 +27,33 @@
         touch-action: none;
         background: url('파도.gif') center/cover no-repeat fixed;
       }
+
+      /* 사운드 컨트롤 (우측 상단) */
+      .sound-controls {
+        position: absolute;
+        top: 4vh;
+        right: 4vw;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 50;
+        font-size: 3.6vw;
+      }
+      .sound-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.75);
+        cursor: pointer;
+        user-select: none;
+      }
+      .sound-btn img {
+        width: 22px;
+        height: 22px;
+      }
+
       /* 상단 타이머 */
       #hud {
         position: absolute;
@@ -126,6 +153,7 @@
       tr {
         background: transparent;
       }
+
       /* 버튼 row */
       .btn-row {
         display: flex;
@@ -148,6 +176,7 @@
         background: #f0f0f0;
         color: #111;
       }
+
       /* 안내 텍스트 (숨길 수 있음) */
       #hint {
         position: absolute;
@@ -158,7 +187,7 @@
         text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
         z-index: 20;
       }
-      /* small screen adjustments */
+
       @media (min-width: 600px) {
         #hud {
           font-size: 22px;
@@ -175,6 +204,27 @@
   <body>
     <div id="game-wrap">
       <div id="hud">0.0s</div>
+
+      <!-- 사운드 컨트롤 표시(게임 화면에서도) -->
+      <div class="sound-controls" id="soundControls">
+        <div class="sound-btn" id="waveToggleBtn">
+          <img
+            id="waveIcon"
+            src="https://img.icons8.com/ios-filled/50/000000/speaker.png"
+            alt="wave"
+          />
+          <span style="font-size: 3.4vw">파도</span>
+        </div>
+        <div class="sound-btn" id="musicToggleBtn">
+          <img
+            id="musicIcon"
+            src="https://img.icons8.com/ios-filled/50/000000/speaker.png"
+            alt="music"
+          />
+          <span style="font-size: 3.4vw">음악</span>
+        </div>
+      </div>
+
       <canvas id="gameCanvas"></canvas>
 
       <!-- overlay/modal 비활성 상태(투명) -->
@@ -209,7 +259,7 @@
         </div>
       </div>
 
-      <!-- 숨겨진 유튜브 플레이어 (파도/음악) : display none 없이 width/height 0으로 둠 -->
+      <!-- 숨겨진 유튜브 플레이어 (파도/음악) -->
       <iframe
         id="wavePlayer"
         src="https://www.youtube.com/embed/n4Mdh3TEq_k?enablejsapi=1&loop=1&playlist=n4Mdh3TEq_k"
@@ -241,7 +291,6 @@
       window.addEventListener('resize', () => {
         W = canvas.width = innerWidth;
         H = canvas.height = innerHeight;
-        // update player radius if you want responsive sizing
         player.r = Math.max(
           20,
           Math.min(48, Math.round(Math.min(W, H) * 0.05))
@@ -250,21 +299,20 @@
 
       /* ===== 이미지 로드(프리로드) ===== */
       const playerImg = new Image();
-      playerImg.src = '새우깡.png'; // 반드시 같은 폴더에 저장
+      playerImg.src = '새우깡.png'; // 상대경로 확인
       const seagullImg = new Image();
-      seagullImg.src = '갈매기.png'; // 반드시 같은 폴더에 저장
+      seagullImg.src = '갈매기.png';
 
       let assetsToLoad = 2;
       function assetLoaded() {
         assetsToLoad--;
         if (assetsToLoad <= 0) {
-          // 모두 로드되면 게임 시작
           startGameLoop();
         }
       }
       playerImg.onload = assetLoaded;
       seagullImg.onload = assetLoaded;
-      // 안전: 이미지 로드 실패 시에도 게임 시작하도록 타임아웃
+      // 안전 타임아웃: 이미지 로드 지연 시에도 시작
       setTimeout(() => {
         if (assetsToLoad > 0) startGameLoop();
       }, 1500);
@@ -272,7 +320,7 @@
       /* 플레이어 */
       const player = {
         x: W / 2,
-        y: H * 0.75,
+        y: H / 2, // 시작 위치: 화면 중앙
         r: Math.max(20, Math.min(48, Math.round(Math.min(W, H) * 0.05))),
         vx: 0,
         vy: 0,
@@ -303,8 +351,10 @@
       function spawnBird() {
         const side = Math.floor(Math.random() * 4);
         let x, y, vx, vy;
-        // **갈매기 이동 속도(개별 속도)** — 5배 느리게 범위로 설정
-        const speed = rand(0.09, 0.24) * (Math.min(W, H) / 800 + 0.6);
+
+        // === 갈매기 속도: 기존보다 약 5배 더 느리게 설정 ===
+        const speed = rand(0.018, 0.048) * (Math.min(W, H) / 800 + 0.6);
+
         const size = Math.max(
           12,
           Math.min(
@@ -312,26 +362,27 @@
             Math.round(rand(Math.min(W, H) * 0.018, Math.min(W, H) * 0.035))
           )
         );
+
         if (side === 0) {
           x = rand(-0.05 * W, 1.05 * W);
           y = -size * 2;
-          vx = rand(-0.2, 0.2) + (W / 2 - x) * rand(0.005, 0.02);
+          vx = rand(-0.08, 0.08) + (W / 2 - x) * rand(0.002, 0.01);
           vy = speed;
         } else if (side === 1) {
           x = W + size * 2;
           y = rand(-0.05 * H, 1.05 * H);
           vx = -speed;
-          vy = rand(-0.2, 0.2) + (H / 2 - y) * rand(0.005, 0.02);
+          vy = rand(-0.08, 0.08) + (H / 2 - y) * rand(0.002, 0.01);
         } else if (side === 2) {
           x = rand(-0.05 * W, 1.05 * W);
           y = H + size * 2;
-          vx = rand(-0.2, 0.2) + (W / 2 - x) * rand(0.005, 0.02);
+          vx = rand(-0.08, 0.08) + (W / 2 - x) * rand(0.002, 0.01);
           vy = -speed;
         } else {
           x = -size * 2;
           y = rand(-0.05 * H, 1.05 * H);
           vx = speed;
-          vy = rand(-0.2, 0.2) + (H / 2 - y) * rand(0.005, 0.02);
+          vy = rand(-0.08, 0.08) + (H / 2 - y) * rand(0.002, 0.01);
         }
 
         birds.push({ x, y, vx, vy, r: size, angle: 0, img: seagullImg });
@@ -356,6 +407,48 @@
       });
       window.addEventListener('keyup', (e) => {
         keys[e.key.toLowerCase()] = false;
+      });
+
+      /* ====== 사운드 토글 UI 로직 ====== */
+      let waveYT, musicYT;
+      let wavePlaying = true;
+      let musicPlaying = true;
+
+      const waveIconEl = document.getElementById('waveIcon');
+      const musicIconEl = document.getElementById('musicIcon');
+      const waveToggleBtn = document.getElementById('waveToggleBtn');
+      const musicToggleBtn = document.getElementById('musicToggleBtn');
+
+      function updateWaveIcon() {
+        waveIconEl.src = wavePlaying
+          ? 'https://img.icons8.com/ios-filled/50/000000/speaker.png'
+          : 'https://img.icons8.com/ios-filled/50/000000/mute.png';
+      }
+      function updateMusicIcon() {
+        musicIconEl.src = musicPlaying
+          ? 'https://img.icons8.com/ios-filled/50/000000/speaker.png'
+          : 'https://img.icons8.com/ios-filled/50/000000/mute.png';
+      }
+
+      waveToggleBtn.addEventListener('click', () => {
+        wavePlaying = !wavePlaying;
+        if (waveYT && waveYT.playVideo) {
+          try {
+            if (wavePlaying) waveYT.playVideo();
+            else waveYT.pauseVideo();
+          } catch (e) {}
+        }
+        updateWaveIcon();
+      });
+      musicToggleBtn.addEventListener('click', () => {
+        musicPlaying = !musicPlaying;
+        if (musicYT && musicYT.playVideo) {
+          try {
+            if (musicPlaying) musicYT.playVideo();
+            else musicYT.pauseVideo();
+          } catch (e) {}
+        }
+        updateMusicIcon();
       });
 
       /* 메인 업데이트/렌더 루프 */
@@ -391,18 +484,19 @@
         let accelX = 0,
           accelY = 0;
         if (useGyro) {
-          // **감도 5배 느리게**
-          const sensitivity = Math.min(W, H) / 35;
+          // 추가 감도 저감: 더 천천히 움직이도록
+          const sensitivity = Math.min(W, H) / 70; // 이전보다 더 낮춤
           accelX = tilt.x * sensitivity;
           accelY = tilt.y * sensitivity;
         } else {
-          const speed = Math.min(W, H) / 35;
+          const speed = Math.min(W, H) / 70;
           if (keys['arrowleft'] || keys['a']) accelX = -speed;
           if (keys['arrowright'] || keys['d']) accelX = speed;
           if (keys['arrowup'] || keys['w']) accelY = -speed;
           if (keys['arrowdown'] || keys['s']) accelY = speed;
         }
 
+        // smoothing velocity & clamp
         player.vx += (accelX - player.vx) * 0.12;
         player.vy += (accelY - player.vy) * 0.12;
         player.x += player.vx * dt * 0.06 * 60;
@@ -435,7 +529,6 @@
           if (b.img && b.img.complete) {
             ctx.drawImage(b.img, -b.r, -b.r, b.r * 2, b.r * 2);
           } else {
-            // fallback circle
             ctx.beginPath();
             ctx.fillStyle = 'white';
             ctx.arc(0, 0, b.r, 0, Math.PI * 2);
@@ -492,7 +585,7 @@
         setTimeout(() => nameInput.focus(), 200);
       }
 
-      /* leaderboard (unchanged) */
+      /* leaderboard */
       const LS_KEY = 'seagull_leaderboard_v1';
       function readLB() {
         try {
@@ -566,23 +659,22 @@
 
       function resetGame() {
         birds.length = 0;
-        player.x = W / 2;
-        player.y = H * 0.75;
+        player.x = W / 2; // 시작 위치 중앙 고정
+        player.y = H / 2;
         player.vx = 0;
         player.vy = 0;
         elapsed = 0;
       }
 
       /* ====== YouTube Players for sounds ====== */
-      let waveYT, musicYT;
       function onYouTubeIframeAPIReady() {
         waveYT = new YT.Player('wavePlayer', {
           events: {
             onReady: function (e) {
               try {
-                e.target.setVolume(60);
-                e.target.playVideo();
-              } catch (err) {}
+                if (wavePlaying) e.target.setVolume(60), e.target.playVideo();
+                else e.target.pauseVideo();
+              } catch (_) {}
             },
           },
         });
@@ -590,12 +682,15 @@
           events: {
             onReady: function (e) {
               try {
-                e.target.setVolume(70);
-                e.target.playVideo();
-              } catch (err) {}
+                if (musicPlaying) e.target.setVolume(70), e.target.playVideo();
+                else e.target.pauseVideo();
+              } catch (_) {}
             },
           },
         });
+        // update icons initial
+        updateWaveIcon();
+        updateMusicIcon();
       }
       (function loadYT() {
         const s = document.createElement('script');
@@ -603,10 +698,11 @@
         document.head.appendChild(s);
       })();
 
+      // 모바일 자동재생 차단 방지: 첫 터치 시 재생 시도
       let firstTouchHandler = function () {
         try {
-          if (waveYT && waveYT.playVideo) waveYT.playVideo();
-          if (musicYT && musicYT.playVideo) musicYT.playVideo();
+          if (waveYT && waveYT.playVideo && wavePlaying) waveYT.playVideo();
+          if (musicYT && musicYT.playVideo && musicPlaying) musicYT.playVideo();
         } catch (e) {}
         window.removeEventListener('touchstart', firstTouchHandler);
       };
@@ -614,15 +710,12 @@
 
       /* ====== 시작: 이미지 로드 완료 후 게임 루프 시작 ====== */
       function startGameLoop() {
-        // avoid double-start
-        if (typeof startGameLoop.started !== 'undefined') return;
+        if (startGameLoop.started) return;
         startGameLoop.started = true;
         resetGame();
         lastFrame = performance.now();
         requestAnimationFrame(gameLoop);
       }
-
-      // 안전히 호출: (이미지는 onload에서 호출하거나 타임아웃이 지나면 호출)
     </script>
   </body>
 </html>
