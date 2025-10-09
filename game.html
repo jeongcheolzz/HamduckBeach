@@ -288,6 +288,7 @@
       let W = (canvas.width = innerWidth);
       let H = (canvas.height = innerHeight);
       let hasSavedThisRun = false;
+      let currentRunId = null; // 현재 플레이 세션 고유 ID
 
       window.addEventListener('resize', () => {
         W = canvas.width = innerWidth;
@@ -624,9 +625,9 @@
       }
       // 기존 addRecord 함수 대신 이걸로 교체
       // 반환값: true = 새로 추가/업데이트됨, false = 아무 일도 안 일어남(기존 기록이 더 높음)
-      function addRecord(name, time) {
+      // LS_KEY는 기존에 있던 상수 그대로 사용
+      function addRecord(name, time, runId) {
         const t = Number(time);
-        // 읽기 (기존 readLB 함수가 있으면 그대로 사용해도 되지만, 안전하게 로컬에서 직접 읽음)
         let arr = [];
         try {
           const raw = localStorage.getItem(LS_KEY);
@@ -635,29 +636,38 @@
           arr = [];
         }
 
-        // 같은 이름(완전 일치) 찾기
+        // 이미 같은 runId로 저장된 레코드가 있으면 중복 저장 차단
+        if (runId) {
+          const foundRun = arr.find((r) => r.runId && r.runId === runId);
+          if (foundRun) {
+            // 같은 세션에서 이미 저장된 기록 있음 -> 아무 일도 안 함
+            return false;
+          }
+        }
+
+        // 같은 이름 찾기 (완전 일치)
         const idx = arr.findIndex((r) => r.name === name);
 
         if (idx !== -1) {
-          // 이미 기록 존재 -> 새 기록이 더 크면 교체(우리는 생존시간이 크면 좋은 것으로 취급)
+          // 기존 기록보다 새 기록이 더 길면 갱신
           if (Number(arr[idx].time) < t) {
-            // 삭제 후 추가(정렬을 위해)
+            // replace existing
             arr.splice(idx, 1);
-            arr.push({ name, time: t });
+            arr.push({ name, time: t, runId: runId || null });
             arr.sort((a, b) => b.time - a.time);
             try {
               localStorage.setItem(LS_KEY, JSON.stringify(arr));
             } catch (e) {
               console.error(e);
             }
-            return true; // 업데이트됨
+            return true;
           } else {
-            // 기존 기록이 같거나 높음 -> 아무 일도 안 함
+            // 기존 기록이 더 큼 -> 무시
             return false;
           }
         } else {
           // 신규 이름 -> 추가
-          arr.push({ name, time: t });
+          arr.push({ name, time: t, runId: runId || null });
           arr.sort((a, b) => b.time - a.time);
           try {
             localStorage.setItem(LS_KEY, JSON.stringify(arr));
@@ -695,7 +705,7 @@
         }
       }
 
-      // helper: 입력 잠금/해제
+      // helper: 입력 잠금/해제 (이미 있으면 그대로 사용)
       function disableNameInput() {
         nameInput.disabled = true;
         nameInput.style.opacity = 0.6;
@@ -705,32 +715,64 @@
         nameInput.style.opacity = 1;
       }
 
-      // 엔터 처리: 기존 리스너 대체
-      nameInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+      // 저장 버튼(optional) 참조: 아래에서 saveBtn을 만들면 사용
+      let saveBtn = null; // 없으면 null
+
+      // 엔터/버튼 중복 실행을 막는 일원화된 함수
+      function commitNameAndSave() {
+        // 이미 저장했으면 바로 리턴
+        if (hasSavedThisRun) return;
+        // 즉시 잠금 (race condition 방지)
+        hasSavedThisRun = true;
+        disableNameInput();
+        if (saveBtn) saveBtn.disabled = true;
+
+        const n = nameInput.value.trim() || '무명';
+        // addRecord는 이제 runId를 인자로 받음
+        const didUpdate = addRecord(n, elapsed.toFixed(1), currentRunId);
+
+        // populate 이후 사용자에게 피드백 주고 싶으면 여기서 처리
+        populateLeaderboard();
+
+        // 포커스 제거(모바일에서 Done 누른 후 중복 발생 방지)
+        try {
+          nameInput.blur();
+        } catch (e) {}
+        return didUpdate;
+      }
+
+      // 안전하게 여러 입력 방식을 수신하도록 이벤트 바인딩
+      function attachNameInputHandlers() {
+        // remove any previous listeners to avoid duplicates
+        nameInput.removeEventListener('keydown', onNameKey);
+        nameInput.removeEventListener('keyup', onNameKey);
+        nameInput.removeEventListener('blur', onNameBlur);
+        // attach
+        nameInput.addEventListener('keydown', onNameKey);
+        nameInput.addEventListener('keyup', onNameKey);
+        nameInput.addEventListener('blur', onNameBlur);
+      }
+
+      // handler: 키(엔터) 처리
+      function onNameKey(e) {
+        // keyCode 13 or key 'Enter' 처리 (모바일 IME 대비)
+        const isEnter = e.key === 'Enter' || e.keyCode === 13;
+        if (isEnter) {
           e.preventDefault();
           commitNameAndSave();
         }
-      });
-
-      // commit 함수 (중복 입력 방지 포함)
-      function commitNameAndSave() {
-        // 한 번만 동작
-        if (hasSavedThisRun) return;
-        hasSavedThisRun = true;
-
-        const n = nameInput.value.trim() || '무명';
-        const didUpdate = addRecord(n, elapsed.toFixed(1)); // boolean
-
-        // 리더보드 갱신 (업데이트되든 아니든 최신 상태를 보여줌)
-        populateLeaderboard();
-
-        // 입력 잠금 (한 번만)
-        disableNameInput();
-
-        // 선택적 알림: 업데이트가 안 되었음을 유저에게 알리고 싶으면 주석 해제
-        // if (!didUpdate) alert('기존 기록이 더 높습니다. 기록은 갱신되지 않았습니다.');
       }
+
+      // handler: 포커스가 떠날 때도 저장 시도 (사용자가 Done 누르고 다른 곳 누를 때)
+      function onNameBlur(e) {
+        // 저장 안 했으면 시도
+        if (!hasSavedThisRun) {
+          commitNameAndSave();
+        }
+      }
+
+      // attach handlers now
+      attachNameInputHandlers();
 
       restartBtn.addEventListener('click', () => {
         modal.classList.remove('show');
@@ -758,9 +800,12 @@
         calibration = null; // 재시작 시 캘리브레이션 다시 받도록
 
         // 리셋 시 이름 입력 상태 초기화
+        currentRunId = Date.now(); // 이 게임 세션의 고유 ID
         hasSavedThisRun = false;
         enableNameInput();
         nameInput.value = '';
+        // (만약 saveBtn을 추가했다면 비활성화 해제)
+        if (typeof saveBtn !== 'undefined' && saveBtn) saveBtn.disabled = false;
       }
 
       /* ====== YouTube Players for sounds ====== */
