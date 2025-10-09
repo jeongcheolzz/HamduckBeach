@@ -485,11 +485,11 @@
           accelY = 0;
         if (useGyro) {
           // 추가 감도 저감: 더 천천히 움직이도록
-          const sensitivity = Math.min(W, H) / 200; // 이전보다 더 낮춤
+          const sensitivity = Math.min(W, H) / 300; // 이전보다 더 낮춤
           accelX = tilt.x * sensitivity;
           accelY = tilt.y * sensitivity;
         } else {
-          const speed = Math.min(W, H) / 200;
+          const speed = Math.min(W, H) / 300;
           if (keys['arrowleft'] || keys['a']) accelX = -speed;
           if (keys['arrowright'] || keys['d']) accelX = speed;
           if (keys['arrowup'] || keys['w']) accelY = -speed;
@@ -719,4 +719,5 @@
     </script>
   </body>
 </html>
+
 
