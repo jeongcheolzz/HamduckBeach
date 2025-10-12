@@ -7,7 +7,6 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap');
 
-      /* 기본 */
       html,
       body {
         margin: 0;
@@ -19,7 +18,6 @@
         -webkit-font-smoothing: antialiased;
       }
 
-      /* 배경 GIF (항상 보이게) */
       .background {
         position: fixed;
         inset: 0;
@@ -27,12 +25,8 @@
         height: 100vh;
         background: url('파도.gif') center/cover no-repeat fixed;
         z-index: -1;
-        background-size: cover;
-        filter: none;
-        opacity: 1;
       }
 
-      /* 페이지 래퍼 (투명) */
       .page {
         max-width: 980px;
         margin: 0 auto;
@@ -40,14 +34,12 @@
         box-sizing: border-box;
         background: transparent;
         position: relative;
-        z-index: 0;
       }
 
       header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 12px;
         margin-bottom: 18px;
       }
 
@@ -57,12 +49,12 @@
         color: #000;
       }
 
-      /* 사운드 토글 (우측 상단) */
       .sound-controls {
         display: flex;
         flex-direction: column;
         gap: 10px;
       }
+
       .sound-btn {
         display: inline-flex;
         align-items: center;
@@ -72,18 +64,16 @@
         background: rgba(255, 255, 255, 0.9);
         backdrop-filter: blur(4px);
         cursor: pointer;
-        user-select: none;
         font-size: 0.95rem;
         color: #000;
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
       }
+
       .sound-btn img {
         width: 22px;
         height: 22px;
-        display: inline-block;
       }
 
-      /* 메인 컨텐츠 */
       .container {
         padding: 18px;
         background: transparent;
@@ -92,17 +82,18 @@
       .section {
         margin-top: 20px;
       }
+
       .section h2 {
         margin: 6px 0 12px 0;
         font-size: 1.15rem;
         color: #000;
       }
+
       .note {
         color: #333;
         margin: 0 0 12px 0;
       }
 
-      /* 이미지 카드 */
       .img-card {
         border-radius: 12px;
         overflow: hidden;
@@ -110,12 +101,14 @@
         background: rgba(255, 255, 255, 0);
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
       }
+
       .img-card img {
         display: block;
         width: 100%;
         height: auto;
         object-fit: cover;
       }
+
       .img-card figcaption {
         padding: 8px 12px;
         font-size: 0.92rem;
@@ -129,21 +122,23 @@
       .cafe {
         margin-bottom: 18px;
       }
+
       .cafe-title {
         margin: 6px 0 8px 0;
         font-size: 1rem;
         font-weight: 800;
         color: #000;
       }
+
       .cafe-row {
         display: flex;
         gap: 10px;
       }
+
       .cafe-row .img-card {
         flex: 1 1 calc(50% - 5px);
       }
 
-      /* 게임 버튼 */
       .game-btn {
         margin-top: 14px;
         display: inline-block;
@@ -162,6 +157,7 @@
         font-size: 0.95rem;
         line-height: 1.5;
       }
+
       .highlight {
         color: #d33;
         font-weight: 800;
@@ -192,68 +188,51 @@
       <header>
         <h1>함덕해수욕장 가이드</h1>
 
-        <div class="sound-controls" aria-hidden="false">
-          <div id="waveToggle" class="sound-btn" role="button" tabindex="0">
+        <div class="sound-controls">
+          <div id="waveToggle" class="sound-btn">
             <img
               id="waveIcon"
               src="https://img.icons8.com/ios-filled/50/000000/speaker.png"
-              alt="파도아이콘"
             />
             <span>파도소리</span>
           </div>
-          <div id="musicToggle" class="sound-btn" role="button" tabindex="0">
+          <div id="musicToggle" class="sound-btn">
             <img
               id="musicIcon"
               src="https://img.icons8.com/ios-filled/50/000000/speaker.png"
-              alt="음악아이콘"
             />
             <span>음악소리</span>
           </div>
         </div>
       </header>
 
-      <main class="container" role="main">
-        <!-- 함덕해수욕장 -->
-        <section id="hamdeok" class="section" aria-labelledby="hamdeok-title">
-          <h2 id="hamdeok-title">함덕해수욕장</h2>
+      <main class="container">
+        <section id="hamdeok" class="section">
+          <h2>함덕해수욕장</h2>
           <p class="note">위치 지도와 해변 풍경 사진을 차례대로 확인하세요.</p>
 
           <figure class="img-card">
-            <img
-              src="함덕해수욕장%20위치사진.png"
-              alt="함덕해수욕장 위치 사진"
-            />
+            <img src="함덕해수욕장%20위치사진.png" alt="함덕해수욕장 위치" />
             <figcaption>함덕해수욕장 위치</figcaption>
           </figure>
 
           <figure class="img-card">
-            <img
-              src="함덕해수욕장%20풍경사진.png"
-              alt="함덕해수욕장 풍경 사진"
-            />
+            <img src="함덕해수욕장%20풍경사진.png" alt="함덕해수욕장 풍경" />
             <figcaption>해변 풍경</figcaption>
           </figure>
         </section>
 
-        <!-- 근처 카페 -->
-        <section
-          id="nearby-cafes"
-          class="section"
-          aria-labelledby="nearby-title"
-        >
-          <h2 id="nearby-title">근처 카페</h2>
-          <p class="note">
-            아래는 카페 위치와 각 카페의 가게 사진 및 메뉴판입니다.
-          </p>
+        <section id="nearby-cafes" class="section">
+          <h2>근처 카페</h2>
+          <p class="note">카페 위치와 각 매장의 사진 및 메뉴판입니다.</p>
 
           <figure class="img-card cafe-map">
             <img src="카페%20위치사진.png" alt="근처 카페 위치 사진" />
             <figcaption>카페 위치 (근거리)</figcaption>
           </figure>
 
-          <!-- 델문도 -->
-          <article class="cafe" aria-labelledby="delmundo-title">
-            <h3 id="delmundo-title" class="cafe-title">델문도</h3>
+          <article class="cafe">
+            <h3 class="cafe-title">델문도</h3>
             <div class="cafe-row">
               <figure class="img-card">
                 <img src="카페%20델문도.png" alt="델문도 가게 사진" />
@@ -266,9 +245,8 @@
             </div>
           </article>
 
-          <!-- 스타벅스 -->
-          <article class="cafe" aria-labelledby="starbucks-title">
-            <h3 id="starbucks-title" class="cafe-title">스타벅스</h3>
+          <article class="cafe">
+            <h3 class="cafe-title">스타벅스</h3>
             <div class="cafe-row">
               <figure class="img-card">
                 <img src="카페%20스타벅스.png" alt="스타벅스 가게 사진" />
@@ -281,9 +259,8 @@
             </div>
           </article>
 
-          <!-- 메가커피 -->
-          <article class="cafe" aria-labelledby="megacoffee-title">
-            <h3 id="megacoffee-title" class="cafe-title">메가커피</h3>
+          <article class="cafe">
+            <h3 class="cafe-title">메가커피</h3>
             <div class="cafe-row">
               <figure class="img-card">
                 <img src="카페%20메가커피.png" alt="메가커피 가게 사진" />
@@ -297,9 +274,8 @@
           </article>
         </section>
 
-        <!-- 게임 버튼 / 안내 -->
-        <section class="section" aria-label="게임안내">
-          <a class="game-btn" href="game.html" role="button"
+        <section class="section">
+          <a class="game-btn" href="game.html"
             >🎮 갈매기 피하기 게임하러 가기</a
           >
           <p class="footer">
@@ -311,7 +287,7 @@
       </main>
     </div>
 
-    <!-- 유튜브 사운드(숨김 iframe) -->
+    <!-- 숨김 iframe -->
     <iframe
       id="waveMusic"
       width="0"
@@ -329,37 +305,44 @@
     ></iframe>
 
     <script>
-      // YouTube API 로드
+      // --- YouTube API 로드 ---
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
       const firstScript = document.getElementsByTagName('script')[0];
       firstScript.parentNode.insertBefore(tag, firstScript);
 
       let wavePlayer, musicPlayer;
+      let playersReady = 0;
 
       function onYouTubeIframeAPIReady() {
         wavePlayer = new YT.Player('waveMusic', {
-          events: {
-            onReady: function (e) {
-              try {
-                e.target.setVolume(60);
-                e.target.playVideo();
-              } catch (err) {}
-            },
-          },
+          events: { onReady: onPlayerReady },
         });
         musicPlayer = new YT.Player('bgMusic', {
-          events: {
-            onReady: function (e) {
-              try {
-                e.target.setVolume(70);
-                e.target.playVideo();
-              } catch (err) {}
-            },
-          },
+          events: { onReady: onPlayerReady },
         });
       }
 
+      function onPlayerReady() {
+        playersReady++;
+        if (playersReady === 2) {
+          // 두 플레이어가 모두 준비된 뒤에만 터치 이벤트 등록
+          window.addEventListener('touchstart', playAllOnce, { once: true });
+          console.log('플레이어 준비 완료 — 첫 터치 시 재생 가능');
+        }
+      }
+
+      function playAllOnce() {
+        try {
+          if (wavePlayer && wavePlayer.playVideo) wavePlayer.playVideo();
+          if (musicPlayer && musicPlayer.playVideo) musicPlayer.playVideo();
+          console.log('첫 터치로 재생됨');
+        } catch (e) {
+          console.error('재생 실패:', e);
+        }
+      }
+
+      // --- 토글 버튼 ---
       const waveIcon = document.getElementById('waveIcon');
       const musicIcon = document.getElementById('musicIcon');
       let wavePlaying = true;
@@ -390,21 +373,6 @@
           ? 'https://img.icons8.com/ios-filled/50/000000/speaker.png'
           : 'https://img.icons8.com/ios-filled/50/000000/mute.png';
       });
-
-      // 모바일에서 autoplay 차단 대비: 첫 터치 시 재생 시도
-      window.addEventListener(
-        'touchstart',
-        function oncePlay() {
-          try {
-            if (wavePlayer && wavePlayer.playVideo && wavePlaying)
-              wavePlayer.playVideo();
-            if (musicPlayer && musicPlayer.playVideo && musicPlaying)
-              musicPlayer.playVideo();
-          } catch (e) {}
-          window.removeEventListener('touchstart', oncePlay);
-        },
-        { once: true }
-      );
     </script>
   </body>
 </html>
