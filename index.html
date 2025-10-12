@@ -19,17 +19,33 @@
         -webkit-font-smoothing: antialiased;
       }
 
-      /* 고정된 배경(움직이는 파도 gif을 배경으로 사용) */
+      /* 기존 .background 대체 */
       .background {
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
         height: 100vh;
-        background: url('파도.gif') center/cover no-repeat;
+        background: url('파도.gif') center/cover no-repeat fixed;
         z-index: -1;
-        filter: saturate(0.95) brightness(0.92);
+        /* 필터 없애서 원본 GIF 색감 유지 */
+        filter: none;
+        opacity: 1;
       }
+
+      /* 컨텐츠 배경을 투명으로 바꿔서 GIF가 보이도록 함 */
+      .container,
+      .page,
+      .container .section {
+        background: transparent !important;
+        box-shadow: none !important; /* 필요하면 유지 가능 */
+      }
+
+      /* 만약 .page에 흰 배경을 유지하되 반투명으로 하고 싶으면 아래처럼 (대신 투명도가 낮아짐)
+      .page {
+        background: rgba(255,255,255,0.4);
+      }
+      */
 
       .page {
         max-width: 980px;
