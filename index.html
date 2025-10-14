@@ -308,71 +308,112 @@
 
     <script>
       let waveYT, musicYT;
+      let wavePlaying = true;
+      let musicPlaying = true;
+      let ytReady = false;
 
-      // 유튜브 API 로드
+      // --- YouTube API 로드 ---
       (function loadYT() {
         const s = document.createElement('script');
         s.src = 'https://www.youtube.com/iframe_api';
         document.head.appendChild(s);
       })();
 
-      // 유튜브 준비
+      // --- 아이콘 업데이트 ---
+      const waveIcon = document.getElementById('waveIcon');
+      const musicIcon = document.getElementById('musicIcon');
+      function updateWaveIcon() {
+        waveIcon.src = wavePlaying
+          ? 'https://img.icons8.com/ios-filled/50/000000/speaker.png'
+          : 'https://img.icons8.com/ios-filled/50/000000/mute.png';
+      }
+      function updateMusicIcon() {
+        musicIcon.src = musicPlaying
+          ? 'https://img.icons8.com/ios-filled/50/000000/speaker.png'
+          : 'https://img.icons8.com/ios-filled/50/000000/mute.png';
+      }
+
+      // --- 유튜브 API 준비 ---
       function onYouTubeIframeAPIReady() {
         waveYT = new YT.Player('wavePlayer', {
-          events: {
-            onReady: (e) => {
-              try {
-                e.target.setVolume(60);
-                if (wavePlaying) e.target.playVideo();
-              } catch (_) {}
-            },
-          },
+          events: { onReady: onPlayerReady },
         });
-
         musicYT = new YT.Player('musicPlayer', {
-          events: {
-            onReady: (e) => {
-              try {
-                e.target.setVolume(70);
-                if (musicPlaying) e.target.playVideo();
-              } catch (_) {}
-            },
-          },
+          events: { onReady: onPlayerReady },
         });
-
-        updateWaveIcon();
-        updateMusicIcon();
       }
 
-      // 강제 재생 함수
-      function tryPlayAll() {
-        try {
-          if (waveYT && wavePlaying) waveYT.playVideo();
-          if (musicYT && musicPlaying) musicYT.playVideo();
-        } catch (_) {}
+      let readyCount = 0;
+      function onPlayerReady() {
+        readyCount++;
+        if (readyCount === 2) {
+          ytReady = true;
+          console.log('유튜브 플레이어 준비 완료');
+          enablePlaybackUnlock();
+        }
       }
 
-      // 첫 인터랙션에 재생 시도 (모바일 대응)
-      const unlockEvents = ['touchstart', 'click', 'scroll'];
-      unlockEvents.forEach((ev) => {
-        window.addEventListener(
-          ev,
-          function once() {
-            // 즉시 재생 시도
-            tryPlayAll();
-            // 0.5초 후 한 번 더 시도 (안 될 경우 대비)
-            setTimeout(tryPlayAll, 500);
-            // 반복 방지
-            unlockEvents.forEach((e2) => window.removeEventListener(e2, once));
-          },
-          { passive: true }
+      // --- 자동재생 꼼수 (터치/스크롤/클릭 다 허용) ---
+      function enablePlaybackUnlock() {
+        const unlockEvents = ['touchstart', 'click', 'scroll'];
+        const unlock = () => {
+          try {
+            // 음소거로 먼저 재생
+            if (waveYT && waveYT.mute) {
+              waveYT.mute();
+              waveYT.playVideo();
+            }
+            if (musicYT && musicYT.mute) {
+              musicYT.mute();
+              musicYT.playVideo();
+            }
+            // 잠시 후 볼륨 복원
+            setTimeout(() => {
+              if (waveYT && waveYT.unMute && wavePlaying) waveYT.unMute();
+              if (musicYT && musicYT.unMute && musicPlaying) musicYT.unMute();
+            }, 1000);
+          } catch (e) {
+            console.log('자동재생 실패, 수동으로 대기');
+          }
+          unlockEvents.forEach((ev) => window.removeEventListener(ev, unlock));
+        };
+        unlockEvents.forEach((ev) =>
+          window.addEventListener(ev, unlock, { once: true, passive: true })
         );
+      }
+
+      // --- 아이콘 토글 + 재생 제어 ---
+      document.getElementById('waveToggle').addEventListener('click', () => {
+        wavePlaying = !wavePlaying;
+        updateWaveIcon();
+        if (!ytReady || !waveYT) return;
+        try {
+          if (wavePlaying) {
+            waveYT.unMute();
+            waveYT.playVideo();
+          } else waveYT.pauseVideo();
+        } catch (e) {}
       });
 
-      // 추가 꼼수: 뷰포트 안에서 강제 리셋
+      document.getElementById('musicToggle').addEventListener('click', () => {
+        musicPlaying = !musicPlaying;
+        updateMusicIcon();
+        if (!ytReady || !musicYT) return;
+        try {
+          if (musicPlaying) {
+            musicYT.unMute();
+            musicYT.playVideo();
+          } else musicYT.pauseVideo();
+        } catch (e) {}
+      });
+
+      // --- 탭 전환 후 복귀 시 자동 복원 ---
       document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) {
-          setTimeout(tryPlayAll, 300);
+        if (!document.hidden && ytReady) {
+          setTimeout(() => {
+            if (wavePlaying && waveYT) waveYT.playVideo();
+            if (musicPlaying && musicYT) musicYT.playVideo();
+          }, 300);
         }
       });
     </script>
