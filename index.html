@@ -308,11 +308,11 @@
       // --- YouTube API 로드 ---
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScript = document.getElementsByTagName('script')[0];
-      firstScript.parentNode.insertBefore(tag, firstScript);
+      document.head.appendChild(tag);
 
       let wavePlayer, musicPlayer;
       let playersReady = 0;
+      let initialized = false;
 
       function onYouTubeIframeAPIReady() {
         wavePlayer = new YT.Player('waveMusic', {
@@ -325,35 +325,18 @@
 
       function onPlayerReady() {
         playersReady++;
-        if (playersReady === 2) {
-          window.addEventListener('touchstart', playAllOnce, { once: true });
-          window.addEventListener('click', playAllOnce, { once: true });
-          console.log('플레이어 준비 완료 — 첫 터치 시 재생 가능');
-        }
       }
 
-      // ✅ 꼼수 버전: 음소거로 재생 후 1초 뒤 볼륨 복원
-      function playAllOnce() {
+      // --- 첫 클릭 시 재생 허용 (꼼수 핵심) ---
+      function initPlayersOnce() {
+        if (initialized || playersReady < 2) return;
+        initialized = true;
         try {
-          if (wavePlayer && wavePlayer.mute && wavePlayer.playVideo) {
-            wavePlayer.mute();
-            wavePlayer.playVideo();
-          }
-          if (musicPlayer && musicPlayer.mute && musicPlayer.playVideo) {
-            musicPlayer.mute();
-            musicPlayer.playVideo();
-          }
-
-          console.log('첫 터치 → 음소거 재생 시작');
-
-          // 1초 후 unmute
-          setTimeout(() => {
-            if (wavePlayer && wavePlayer.unMute) wavePlayer.unMute();
-            if (musicPlayer && musicPlayer.unMute) musicPlayer.unMute();
-            console.log('볼륨 복원 완료');
-          }, 1000);
+          wavePlayer.playVideo();
+          musicPlayer.playVideo();
+          console.log('🎵 첫 클릭 시 재생됨');
         } catch (e) {
-          console.error('재생 실패:', e);
+          console.warn('재생 실패:', e);
         }
       }
 
@@ -364,6 +347,7 @@
       let musicPlaying = true;
 
       document.getElementById('waveToggle').addEventListener('click', () => {
+        initPlayersOnce(); // ✅ 클릭 시 초기화 시도
         wavePlaying = !wavePlaying;
         if (wavePlayer && wavePlayer.playVideo) {
           try {
@@ -372,6 +356,20 @@
           } catch (e) {}
         }
         waveIcon.src = wavePlaying
+          ? 'https://img.icons8.com/ios-filled/50/000000/speaker.png'
+          : 'https://img.icons8.com/ios-filled/50/000000/mute.png';
+      });
+
+      document.getElementById('musicToggle').addEventListener('click', () => {
+        initPlayersOnce(); // ✅ 클릭 시 초기화 시도
+        musicPlaying = !musicPlaying;
+        if (musicPlayer && musicPlayer.playVideo) {
+          try {
+            if (musicPlaying) musicPlayer.playVideo();
+            else musicPlayer.pauseVideo();
+          } catch (e) {}
+        }
+        musicIcon.src = musicPlaying
           ? 'https://img.icons8.com/ios-filled/50/000000/speaker.png'
           : 'https://img.icons8.com/ios-filled/50/000000/mute.png';
       });
