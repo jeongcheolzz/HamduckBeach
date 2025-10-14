@@ -287,90 +287,88 @@
       </main>
     </div>
 
-    <!-- 숨김 iframe -->
+    <!-- 유튜브 플레이어 -->
     <iframe
-      id="waveMusic"
+      id="wavePlayer"
       width="0"
       height="0"
       src="https://www.youtube.com/embed/n4Mdh3TEq_k?enablejsapi=1&loop=1&playlist=n4Mdh3TEq_k"
       frameborder="0"
+      allow="autoplay"
     ></iframe>
 
     <iframe
-      id="bgMusic"
+      id="musicPlayer"
       width="0"
       height="0"
       src="https://www.youtube.com/embed/MWRb7zOxxdg?enablejsapi=1&loop=1&playlist=MWRb7zOxxdg"
       frameborder="0"
+      allow="autoplay"
     ></iframe>
 
     <script>
-      // --- YouTube API 로드 ---
+      // --- 유튜브 API 로드 ---
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScript = document.getElementsByTagName('script')[0];
-      firstScript.parentNode.insertBefore(tag, firstScript);
+      document.head.appendChild(tag);
 
-      let wavePlayer, musicPlayer;
-      let playersReady = 0;
+      let waveYT, musicYT;
+      let readyCount = 0;
+      let wavePlaying = true;
+      let musicPlaying = true;
 
       function onYouTubeIframeAPIReady() {
-        wavePlayer = new YT.Player('waveMusic', {
+        waveYT = new YT.Player('wavePlayer', {
           events: { onReady: onPlayerReady },
         });
-        musicPlayer = new YT.Player('bgMusic', {
+        musicYT = new YT.Player('musicPlayer', {
           events: { onReady: onPlayerReady },
         });
       }
 
       function onPlayerReady() {
-        playersReady++;
-        if (playersReady === 2) {
-          window.addEventListener('touchstart', playAllOnce, { once: true });
-          window.addEventListener('click', playAllOnce, { once: true });
-          console.log('플레이어 준비 완료 — 첫 터치 시 재생 가능');
+        readyCount++;
+        if (readyCount === 2) {
+          // 첫 터치 시 음소거로 재생 (모바일 자동재생 제한 우회)
+          const activateAudio = () => {
+            try {
+              if (waveYT && waveYT.playVideo) {
+                waveYT.mute();
+                waveYT.playVideo();
+              }
+              if (musicYT && musicYT.playVideo) {
+                musicYT.mute();
+                musicYT.playVideo();
+              }
+
+              setTimeout(() => {
+                waveYT.unMute();
+                musicYT.unMute();
+                waveYT.setVolume(60);
+                musicYT.setVolume(70);
+              }, 1000);
+            } catch (e) {
+              console.log('재생 에러', e);
+            }
+            window.removeEventListener('touchstart', activateAudio);
+            window.removeEventListener('click', activateAudio);
+          };
+
+          window.addEventListener('touchstart', activateAudio, { once: true });
+          window.addEventListener('click', activateAudio, { once: true });
         }
       }
 
-      // ✅ 꼼수 버전: 음소거로 재생 후 1초 뒤 볼륨 복원
-      function playAllOnce() {
-        try {
-          if (wavePlayer && wavePlayer.mute && wavePlayer.playVideo) {
-            wavePlayer.mute();
-            wavePlayer.playVideo();
-          }
-          if (musicPlayer && musicPlayer.mute && musicPlayer.playVideo) {
-            musicPlayer.mute();
-            musicPlayer.playVideo();
-          }
-
-          console.log('첫 터치 → 음소거 재생 시작');
-
-          // 1초 후 unmute
-          setTimeout(() => {
-            if (wavePlayer && wavePlayer.unMute) wavePlayer.unMute();
-            if (musicPlayer && musicPlayer.unMute) musicPlayer.unMute();
-            console.log('볼륨 복원 완료');
-          }, 1000);
-        } catch (e) {
-          console.error('재생 실패:', e);
-        }
-      }
-
-      // --- 토글 버튼 ---
+      // --- 사운드 버튼 ---
       const waveIcon = document.getElementById('waveIcon');
       const musicIcon = document.getElementById('musicIcon');
-      let wavePlaying = true;
-      let musicPlaying = true;
 
       document.getElementById('waveToggle').addEventListener('click', () => {
         wavePlaying = !wavePlaying;
-        if (wavePlayer && wavePlayer.playVideo) {
-          try {
-            if (wavePlaying) wavePlayer.playVideo();
-            else wavePlayer.pauseVideo();
-          } catch (e) {}
-        }
+        try {
+          if (wavePlaying) waveYT.playVideo();
+          else waveYT.pauseVideo();
+        } catch (e) {}
         waveIcon.src = wavePlaying
           ? 'https://img.icons8.com/ios-filled/50/000000/speaker.png'
           : 'https://img.icons8.com/ios-filled/50/000000/mute.png';
@@ -378,12 +376,10 @@
 
       document.getElementById('musicToggle').addEventListener('click', () => {
         musicPlaying = !musicPlaying;
-        if (musicPlayer && musicPlayer.playVideo) {
-          try {
-            if (musicPlaying) musicPlayer.playVideo();
-            else musicPlayer.pauseVideo();
-          } catch (e) {}
-        }
+        try {
+          if (musicPlaying) musicYT.playVideo();
+          else musicYT.pauseVideo();
+        } catch (e) {}
         musicIcon.src = musicPlaying
           ? 'https://img.icons8.com/ios-filled/50/000000/speaker.png'
           : 'https://img.icons8.com/ios-filled/50/000000/mute.png';
