@@ -309,16 +309,21 @@
     <script>
       let waveYT, musicYT;
 
-      /* ====== YouTube Players for sounds ====== */
+      // 유튜브 API 로드
+      (function loadYT() {
+        const s = document.createElement('script');
+        s.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(s);
+      })();
+
+      // 유튜브 준비
       function onYouTubeIframeAPIReady() {
         waveYT = new YT.Player('wavePlayer', {
           events: {
-            onReady: function (e) {
+            onReady: (e) => {
               try {
-                if (wavePlaying) {
-                  e.target.setVolume(60);
-                  e.target.playVideo();
-                } else e.target.pauseVideo();
+                e.target.setVolume(60);
+                if (wavePlaying) e.target.playVideo();
               } catch (_) {}
             },
           },
@@ -326,51 +331,49 @@
 
         musicYT = new YT.Player('musicPlayer', {
           events: {
-            onReady: function (e) {
+            onReady: (e) => {
               try {
-                if (musicPlaying) {
-                  e.target.setVolume(70);
-                  e.target.playVideo();
-                } else e.target.pauseVideo();
+                e.target.setVolume(70);
+                if (musicPlaying) e.target.playVideo();
               } catch (_) {}
             },
           },
         });
 
-        // 기존 아이콘 업데이트 그대로 유지
         updateWaveIcon();
         updateMusicIcon();
       }
 
-      /* ====== Load YouTube API ====== */
-      (function loadYT() {
-        const s = document.createElement('script');
-        s.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(s);
-      })();
-
-      /* ====== 꼼수: 모바일 자동재생 차단 방지 ====== */
-      function forceUnlockAudio() {
+      // 강제 재생 함수
+      function tryPlayAll() {
         try {
-          if (waveYT && waveYT.playVideo && wavePlaying) waveYT.playVideo();
-          if (musicYT && musicYT.playVideo && musicPlaying) musicYT.playVideo();
-        } catch (e) {}
+          if (waveYT && wavePlaying) waveYT.playVideo();
+          if (musicYT && musicPlaying) musicYT.playVideo();
+        } catch (_) {}
       }
 
-      // 터치 + 클릭 + 스크롤 감지
+      // 첫 인터랙션에 재생 시도 (모바일 대응)
       const unlockEvents = ['touchstart', 'click', 'scroll'];
       unlockEvents.forEach((ev) => {
         window.addEventListener(
           ev,
-          function onceUnlock() {
-            forceUnlockAudio();
-            setTimeout(forceUnlockAudio, 400); // 두 번 시도
-            unlockEvents.forEach((e2) =>
-              window.removeEventListener(e2, onceUnlock)
-            );
+          function once() {
+            // 즉시 재생 시도
+            tryPlayAll();
+            // 0.5초 후 한 번 더 시도 (안 될 경우 대비)
+            setTimeout(tryPlayAll, 500);
+            // 반복 방지
+            unlockEvents.forEach((e2) => window.removeEventListener(e2, once));
           },
           { passive: true }
         );
+      });
+
+      // 추가 꼼수: 뷰포트 안에서 강제 리셋
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          setTimeout(tryPlayAll, 300);
+        }
       });
     </script>
   </body>
