@@ -307,82 +307,70 @@
     ></iframe>
 
     <script>
-      // --- 유튜브 API 로드 ---
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      document.head.appendChild(tag);
-
       let waveYT, musicYT;
-      let readyCount = 0;
-      let wavePlaying = true;
-      let musicPlaying = true;
 
+      /* ====== YouTube Players for sounds ====== */
       function onYouTubeIframeAPIReady() {
         waveYT = new YT.Player('wavePlayer', {
-          events: { onReady: onPlayerReady },
+          events: {
+            onReady: function (e) {
+              try {
+                if (wavePlaying) {
+                  e.target.setVolume(60);
+                  e.target.playVideo();
+                } else e.target.pauseVideo();
+              } catch (_) {}
+            },
+          },
         });
+
         musicYT = new YT.Player('musicPlayer', {
-          events: { onReady: onPlayerReady },
+          events: {
+            onReady: function (e) {
+              try {
+                if (musicPlaying) {
+                  e.target.setVolume(70);
+                  e.target.playVideo();
+                } else e.target.pauseVideo();
+              } catch (_) {}
+            },
+          },
         });
+
+        // 기존 아이콘 업데이트 그대로 유지
+        updateWaveIcon();
+        updateMusicIcon();
       }
 
-      function onPlayerReady() {
-        readyCount++;
-        if (readyCount === 2) {
-          // 첫 터치 시 음소거로 재생 (모바일 자동재생 제한 우회)
-          const activateAudio = () => {
-            try {
-              if (waveYT && waveYT.playVideo) {
-                waveYT.mute();
-                waveYT.playVideo();
-              }
-              if (musicYT && musicYT.playVideo) {
-                musicYT.mute();
-                musicYT.playVideo();
-              }
+      /* ====== Load YouTube API ====== */
+      (function loadYT() {
+        const s = document.createElement('script');
+        s.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(s);
+      })();
 
-              setTimeout(() => {
-                waveYT.unMute();
-                musicYT.unMute();
-                waveYT.setVolume(60);
-                musicYT.setVolume(70);
-              }, 1000);
-            } catch (e) {
-              console.log('재생 에러', e);
-            }
-            window.removeEventListener('touchstart', activateAudio);
-            window.removeEventListener('click', activateAudio);
-          };
-
-          window.addEventListener('touchstart', activateAudio, { once: true });
-          window.addEventListener('click', activateAudio, { once: true });
-        }
+      /* ====== 꼼수: 모바일 자동재생 차단 방지 ====== */
+      function forceUnlockAudio() {
+        try {
+          if (waveYT && waveYT.playVideo && wavePlaying) waveYT.playVideo();
+          if (musicYT && musicYT.playVideo && musicPlaying) musicYT.playVideo();
+        } catch (e) {}
       }
 
-      // --- 사운드 버튼 ---
-      const waveIcon = document.getElementById('waveIcon');
-      const musicIcon = document.getElementById('musicIcon');
-
-      document.getElementById('waveToggle').addEventListener('click', () => {
-        wavePlaying = !wavePlaying;
-        try {
-          if (wavePlaying) waveYT.playVideo();
-          else waveYT.pauseVideo();
-        } catch (e) {}
-        waveIcon.src = wavePlaying
-          ? 'https://img.icons8.com/ios-filled/50/000000/speaker.png'
-          : 'https://img.icons8.com/ios-filled/50/000000/mute.png';
-      });
-
-      document.getElementById('musicToggle').addEventListener('click', () => {
-        musicPlaying = !musicPlaying;
-        try {
-          if (musicPlaying) musicYT.playVideo();
-          else musicYT.pauseVideo();
-        } catch (e) {}
-        musicIcon.src = musicPlaying
-          ? 'https://img.icons8.com/ios-filled/50/000000/speaker.png'
-          : 'https://img.icons8.com/ios-filled/50/000000/mute.png';
+      // 터치 + 클릭 + 스크롤 감지
+      const unlockEvents = ['touchstart', 'click', 'scroll'];
+      unlockEvents.forEach((ev) => {
+        window.addEventListener(
+          ev,
+          function onceUnlock() {
+            forceUnlockAudio();
+            setTimeout(forceUnlockAudio, 400); // 두 번 시도
+            unlockEvents.forEach((e2) =>
+              window.removeEventListener(e2, onceUnlock)
+            );
+          },
+          { passive: true }
+        );
       });
     </script>
   </body>
