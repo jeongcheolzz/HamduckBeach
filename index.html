@@ -308,11 +308,11 @@
       // --- YouTube API 로드 ---
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
-      document.head.appendChild(tag);
+      const firstScript = document.getElementsByTagName('script')[0];
+      firstScript.parentNode.insertBefore(tag, firstScript);
 
       let wavePlayer, musicPlayer;
       let playersReady = 0;
-      let initialized = false;
 
       function onYouTubeIframeAPIReady() {
         wavePlayer = new YT.Player('waveMusic', {
@@ -326,35 +326,34 @@
       function onPlayerReady() {
         playersReady++;
         if (playersReady === 2) {
-          console.log('플레이어 준비 완료');
-          // 아무 곳이나 첫 터치 시 재생 시도
-          window.addEventListener('touchstart', userActivatedInit, {
-            once: true,
-          });
-          window.addEventListener('click', userActivatedInit, { once: true });
+          window.addEventListener('touchstart', playAllOnce, { once: true });
+          window.addEventListener('click', playAllOnce, { once: true });
+          console.log('플레이어 준비 완료 — 첫 터치 시 재생 가능');
         }
       }
 
-      async function userActivatedInit() {
-        if (initialized) return;
-        initialized = true;
-
+      // ✅ 꼼수 버전: 음소거로 재생 후 1초 뒤 볼륨 복원
+      function playAllOnce() {
         try {
-          // 🧠 오디오컨텍스트 꼼수
-          const ctx = new (window.AudioContext || window.webkitAudioContext)();
-          const buffer = ctx.createBuffer(1, 1, 22050);
-          const source = ctx.createBufferSource();
-          source.buffer = buffer;
-          source.connect(ctx.destination);
-          source.start(0);
+          if (wavePlayer && wavePlayer.mute && wavePlayer.playVideo) {
+            wavePlayer.mute();
+            wavePlayer.playVideo();
+          }
+          if (musicPlayer && musicPlayer.mute && musicPlayer.playVideo) {
+            musicPlayer.mute();
+            musicPlayer.playVideo();
+          }
 
-          // 유튜브 플레이어 재생 시도
-          await new Promise((r) => setTimeout(r, 300));
-          wavePlayer.playVideo();
-          musicPlayer.playVideo();
-          console.log('🎵 첫 터치 후 자동 재생 성공');
+          console.log('첫 터치 → 음소거 재생 시작');
+
+          // 1초 후 unmute
+          setTimeout(() => {
+            if (wavePlayer && wavePlayer.unMute) wavePlayer.unMute();
+            if (musicPlayer && musicPlayer.unMute) musicPlayer.unMute();
+            console.log('볼륨 복원 완료');
+          }, 1000);
         } catch (e) {
-          console.warn('오디오 초기화 실패:', e);
+          console.error('재생 실패:', e);
         }
       }
 
@@ -365,7 +364,6 @@
       let musicPlaying = true;
 
       document.getElementById('waveToggle').addEventListener('click', () => {
-        userActivatedInit(); // 첫 클릭 시 초기화
         wavePlaying = !wavePlaying;
         if (wavePlayer && wavePlayer.playVideo) {
           try {
@@ -379,7 +377,6 @@
       });
 
       document.getElementById('musicToggle').addEventListener('click', () => {
-        userActivatedInit(); // 첫 클릭 시 초기화
         musicPlaying = !musicPlaying;
         if (musicPlayer && musicPlayer.playVideo) {
           try {
