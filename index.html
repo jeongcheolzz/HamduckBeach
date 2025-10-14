@@ -325,18 +325,36 @@
 
       function onPlayerReady() {
         playersReady++;
+        if (playersReady === 2) {
+          console.log('플레이어 준비 완료');
+          // 아무 곳이나 첫 터치 시 재생 시도
+          window.addEventListener('touchstart', userActivatedInit, {
+            once: true,
+          });
+          window.addEventListener('click', userActivatedInit, { once: true });
+        }
       }
 
-      // --- 첫 클릭 시 재생 허용 (꼼수 핵심) ---
-      function initPlayersOnce() {
-        if (initialized || playersReady < 2) return;
+      async function userActivatedInit() {
+        if (initialized) return;
         initialized = true;
+
         try {
+          // 🧠 오디오컨텍스트 꼼수
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const buffer = ctx.createBuffer(1, 1, 22050);
+          const source = ctx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(ctx.destination);
+          source.start(0);
+
+          // 유튜브 플레이어 재생 시도
+          await new Promise((r) => setTimeout(r, 300));
           wavePlayer.playVideo();
           musicPlayer.playVideo();
-          console.log('🎵 첫 클릭 시 재생됨');
+          console.log('🎵 첫 터치 후 자동 재생 성공');
         } catch (e) {
-          console.warn('재생 실패:', e);
+          console.warn('오디오 초기화 실패:', e);
         }
       }
 
@@ -347,7 +365,7 @@
       let musicPlaying = true;
 
       document.getElementById('waveToggle').addEventListener('click', () => {
-        initPlayersOnce(); // ✅ 클릭 시 초기화 시도
+        userActivatedInit(); // 첫 클릭 시 초기화
         wavePlaying = !wavePlaying;
         if (wavePlayer && wavePlayer.playVideo) {
           try {
@@ -361,20 +379,7 @@
       });
 
       document.getElementById('musicToggle').addEventListener('click', () => {
-        initPlayersOnce(); // ✅ 클릭 시 초기화 시도
-        musicPlaying = !musicPlaying;
-        if (musicPlayer && musicPlayer.playVideo) {
-          try {
-            if (musicPlaying) musicPlayer.playVideo();
-            else musicPlayer.pauseVideo();
-          } catch (e) {}
-        }
-        musicIcon.src = musicPlaying
-          ? 'https://img.icons8.com/ios-filled/50/000000/speaker.png'
-          : 'https://img.icons8.com/ios-filled/50/000000/mute.png';
-      });
-
-      document.getElementById('musicToggle').addEventListener('click', () => {
+        userActivatedInit(); // 첫 클릭 시 초기화
         musicPlaying = !musicPlaying;
         if (musicPlayer && musicPlayer.playVideo) {
           try {
