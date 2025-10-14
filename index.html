@@ -292,7 +292,7 @@
       id="waveMusic"
       width="0"
       height="0"
-      src="https://www.youtube.com/embed/n4Mdh3TEq_k?enablejsapi=1&autoplay=1&loop=1&playlist=n4Mdh3TEq_k"
+      src="https://www.youtube.com/embed/n4Mdh3TEq_k?enablejsapi=1&loop=1&playlist=n4Mdh3TEq_k"
       frameborder="0"
     ></iframe>
 
@@ -300,7 +300,7 @@
       id="bgMusic"
       width="0"
       height="0"
-      src="https://www.youtube.com/embed/MWRb7zOxxdg?enablejsapi=1&autoplay=1&loop=1&playlist=MWRb7zOxxdg"
+      src="https://www.youtube.com/embed/MWRb7zOxxdg?enablejsapi=1&loop=1&playlist=MWRb7zOxxdg"
       frameborder="0"
     ></iframe>
 
@@ -326,17 +326,32 @@
       function onPlayerReady() {
         playersReady++;
         if (playersReady === 2) {
-          // 두 플레이어가 모두 준비된 뒤에만 터치 이벤트 등록
           window.addEventListener('touchstart', playAllOnce, { once: true });
+          window.addEventListener('click', playAllOnce, { once: true });
           console.log('플레이어 준비 완료 — 첫 터치 시 재생 가능');
         }
       }
 
+      // ✅ 꼼수 버전: 음소거로 재생 후 1초 뒤 볼륨 복원
       function playAllOnce() {
         try {
-          if (wavePlayer && wavePlayer.playVideo) wavePlayer.playVideo();
-          if (musicPlayer && musicPlayer.playVideo) musicPlayer.playVideo();
-          console.log('첫 터치로 재생됨');
+          if (wavePlayer && wavePlayer.mute && wavePlayer.playVideo) {
+            wavePlayer.mute();
+            wavePlayer.playVideo();
+          }
+          if (musicPlayer && musicPlayer.mute && musicPlayer.playVideo) {
+            musicPlayer.mute();
+            musicPlayer.playVideo();
+          }
+
+          console.log('첫 터치 → 음소거 재생 시작');
+
+          // 1초 후 unmute
+          setTimeout(() => {
+            if (wavePlayer && wavePlayer.unMute) wavePlayer.unMute();
+            if (musicPlayer && musicPlayer.unMute) musicPlayer.unMute();
+            console.log('볼륨 복원 완료');
+          }, 1000);
         } catch (e) {
           console.error('재생 실패:', e);
         }
