@@ -997,23 +997,60 @@
         lastFrame = performance.now();
         requestAnimationFrame(gameLoop);
 
-        /* ====== 탭 전환 / 백그라운드 감지 ====== */
-        document.addEventListener('visibilitychange', () => {
-          if (document.hidden) {
-            // 백그라운드로 전환 → 일시정지
-            if (running) {
-              running = false;
-              console.log('게임 일시정지됨 (백그라운드 전환)');
-            }
-          } else {
-            // 다시 포그라운드로 → 재개
-            if (!running && overlay.getAttribute('aria-hidden') === 'true') {
-              console.log('게임 재개됨 (포그라운드 복귀)');
-              running = true;
-              lastFrame = performance.now();
-              requestAnimationFrame(gameLoop);
-            }
+        /* ===== 백그라운드/포그라운드 감지 및 일시정지 ===== */
+        let pausedAt = null;
+
+        function pauseGame(reason = 'unknown') {
+          if (running) {
+            running = false;
+            pausedAt = performance.now();
+            console.log(`⏸ 게임 일시정지 (${reason})`);
+
+            // 사운드 정지
+            try {
+              if (waveYT) waveYT.pauseVideo();
+              if (musicYT) musicYT.pauseVideo();
+            } catch (e) {}
           }
+        }
+
+        function resumeGame(reason = 'unknown') {
+          // 게임오버 상태면 재개 금지
+          if (!running && overlay.getAttribute('aria-hidden') === 'true') {
+            const now = performance.now();
+            if (pausedAt) {
+              const pauseDuration = now - pausedAt;
+              startTime += pauseDuration; // 정지된 시간 보정
+              pausedAt = null;
+            }
+
+            console.log(`▶ 게임 재개 (${reason})`);
+            running = true;
+            lastFrame = performance.now();
+            requestAnimationFrame(gameLoop);
+
+            // 사운드 재개
+            try {
+              if (waveYT && wavePlaying) waveYT.playVideo();
+              if (musicYT && musicPlaying) musicYT.playVideo();
+            } catch (e) {}
+          }
+        }
+
+        // ✅ 대부분의 브라우저
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) pauseGame('visibilitychange');
+          else resumeGame('visibilitychange');
+        });
+
+        // ✅ iOS Safari, 일부 안드로이드 환경
+        window.addEventListener('pagehide', () => pauseGame('pagehide'));
+        window.addEventListener('blur', () => pauseGame('blur'));
+        window.addEventListener('focus', () => resumeGame('focus'));
+
+        // ✅ 홈화면에서 앱 복귀 시(안드로이드 크롬 특이 케이스)
+        window.addEventListener('pageshow', (e) => {
+          if (e.persisted) resumeGame('pageshow(persisted)');
         });
       }
     </script>
