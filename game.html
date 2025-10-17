@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
   <head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <meta charset="utf-8" />
     <meta
       name="viewport"
@@ -697,81 +699,104 @@
         overlay.style.background = 'rgba(0,0,0,0.5)';
         overlay.setAttribute('aria-hidden', 'false');
         modal.classList.add('show');
-        populateLeaderboard();
+
+        // ❌ 여기는 이제 addRecord() 필요 없음!
+        // ✅ 이름 입력 후 확인 버튼(또는 엔터)을 눌렀을 때만 commitNameAndSave() 실행됨
+
         setTimeout(() => nameInput.focus(), 200);
       }
 
-      /* leaderboard */
+      /* leaderboard (Supabase 버전 - 안정화 및 실시간 반영 버전) */
+
+      // Supabase 초기화
+      const SUPABASE_URL = 'https://zvzlkxwxehjzalbxokrq.supabase.co';
+      const SUPABASE_ANON_KEY =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2emxreHd4ZWhqemFsYnhva3JxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1OTM0ODMsImV4cCI6MjA3NjE2OTQ4M30.73PB3JDOIPWBj1RtHf47s2geEwx20Cg4YgklOWf2aE0';
+      const supabase = window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+      );
+
+      // 로컬 캐시 키 (백업용)
       const LS_KEY = 'seagull_leaderboard_v1';
-      function readLB() {
+
+      // ✅ DB에서 리더보드 불러오기
+      async function readLB() {
         try {
-          const raw = localStorage.getItem(LS_KEY);
-          if (!raw) return [];
-          return JSON.parse(raw);
+          const { data, error } = await supabase
+            .from('galmaegi')
+            .select('name, survive_time')
+            .order('survive_time', { ascending: false });
+
+          if (error) throw error;
+          return data.map((r) => ({ name: r.name, time: r.survive_time }));
         } catch (e) {
+          console.error('readLB error:', e);
           return [];
         }
       }
-      function saveLB(arr) {
-        localStorage.setItem(LS_KEY, JSON.stringify(arr));
-      }
-      // 기존 addRecord 함수 대신 이걸로 교체
-      // 반환값: true = 새로 추가/업데이트됨, false = 아무 일도 안 일어남(기존 기록이 더 높음)
-      // LS_KEY는 기존에 있던 상수 그대로 사용
-      function addRecord(name, time, runId) {
+
+      // ✅ DB에 기록 추가 (업데이트 + 즉시 반영)
+      async function addRecord(name, time, runId) {
         const t = Number(time);
-        let arr = [];
+
+        // 이름이 비었으면 DB 저장 안 함
+        if (!name || name.trim() === '') {
+          console.warn('⚠️ 이름이 비어 있어서 기록 저장 안 함');
+          return false;
+        }
+
         try {
-          const raw = localStorage.getItem(LS_KEY);
-          arr = raw ? JSON.parse(raw) : [];
-        } catch (e) {
-          arr = [];
-        }
+          // 기존 기록 불러오기
+          const { data: existing, error: selErr } = await supabase
+            .from('galmaegi')
+            .select('id, survive_time')
+            .eq('name', name)
+            .maybeSingle(); // single() 대신 maybeSingle() → 없는 경우 에러 안 던짐
 
-        // 이미 같은 runId로 저장된 레코드가 있으면 중복 저장 차단
-        if (runId) {
-          const foundRun = arr.find((r) => r.runId && r.runId === runId);
-          if (foundRun) {
-            // 같은 세션에서 이미 저장된 기록 있음 -> 아무 일도 안 함
-            return false;
-          }
-        }
+          if (selErr) throw selErr;
 
-        // 같은 이름 찾기 (완전 일치)
-        const idx = arr.findIndex((r) => r.name === name);
+          let updated = false;
 
-        if (idx !== -1) {
-          // 기존 기록보다 새 기록이 더 길면 갱신
-          if (Number(arr[idx].time) < t) {
-            // replace existing
-            arr.splice(idx, 1);
-            arr.push({ name, time: t, runId: runId || null });
-            arr.sort((a, b) => b.time - a.time);
-            try {
-              localStorage.setItem(LS_KEY, JSON.stringify(arr));
-            } catch (e) {
-              console.error(e);
+          if (existing) {
+            // 기존 기록이 더 크면 무시
+            if (Number(existing.survive_time) >= t) {
+              console.log('이전 기록이 더 높음 → 갱신 안 함');
+            } else {
+              // 갱신
+              const { error: upErr } = await supabase
+                .from('galmaegi')
+                .update({ survive_time: t })
+                .eq('id', existing.id);
+              if (upErr) throw upErr;
+              updated = true;
             }
-            return true;
           } else {
-            // 기존 기록이 더 큼 -> 무시
-            return false;
+            // 신규 추가
+            const { error: insErr } = await supabase
+              .from('galmaegi')
+              .insert([{ name, survive_time: t }]);
+            if (insErr) throw insErr;
+            updated = true;
           }
-        } else {
-          // 신규 이름 -> 추가
-          arr.push({ name, time: t, runId: runId || null });
-          arr.sort((a, b) => b.time - a.time);
-          try {
-            localStorage.setItem(LS_KEY, JSON.stringify(arr));
-          } catch (e) {
-            console.error(e);
+
+          // ✅ DB 반영 성공 시 로컬 캐시 갱신 + 리더보드 즉시 새로고침
+          if (updated) {
+            localStorage.setItem(LS_KEY, JSON.stringify({ name, time: t }));
+            console.log('✅ 기록 추가 완료, 리더보드 갱신 중...');
+            await populateLeaderboard(); // 실시간 리더보드 갱신
           }
-          return true;
+
+          return updated;
+        } catch (e) {
+          console.error('addRecord error:', e);
+          return false;
         }
       }
 
-      function populateLeaderboard() {
-        const arr = readLB(); // 기존 로컬 readLB() 반환 사용
+      // ✅ 리더보드 표시 함수
+      async function populateLeaderboard() {
+        const arr = await readLB();
         lbBody.innerHTML = '';
 
         if (!arr || arr.length === 0) {
@@ -780,32 +805,22 @@
           return;
         }
 
-        for (let i = 0; i < arr.length; i++) {
-          const r = arr[i];
+        arr.forEach((r, i) => {
           const tr = document.createElement('tr');
 
-          // top3 클래스 추가
           if (i === 0) tr.classList.add('rank-1');
           else if (i === 1) tr.classList.add('rank-2');
           else if (i === 2) tr.classList.add('rank-3');
 
-          // rank cell (등수 + 메달 아이콘)
           const rankTd = document.createElement('td');
           rankTd.className = 'rank';
-          // 메달/아이콘 텍스트: emoji 사용 (깨끗하고 외부 리소스 불필요)
-          let medal = '';
-          if (i === 0) medal = '🥇';
-          else if (i === 1) medal = '🥈';
-          else if (i === 2) medal = '🥉';
-          // 등수 + 메달: 메달이 있으면 앞에 붙임
+          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
           rankTd.innerHTML = (medal ? `${medal} ` : '') + (i + 1);
 
-          // name cell
           const nm = document.createElement('td');
           nm.className = 'name';
           nm.textContent = r.name;
 
-          // time cell (오른쪽 정렬)
           const t = document.createElement('td');
           t.className = 'time';
           t.style.textAlign = 'right';
@@ -816,8 +831,10 @@
           tr.appendChild(t);
 
           lbBody.appendChild(tr);
-        }
+        });
       }
+
+      /* 이하 부분 (disableNameInput, commitNameAndSave 등) 기존 그대로 사용 */
 
       // helper: 입력 잠금/해제 (이미 있으면 그대로 사용)
       function disableNameInput() {
@@ -834,24 +851,32 @@
 
       // 엔터/버튼 중복 실행을 막는 일원화된 함수
       function commitNameAndSave() {
-        // 이미 저장했으면 바로 리턴
+        // 이미 저장했으면 중복 방지
         if (hasSavedThisRun) return;
-        // 즉시 잠금 (race condition 방지)
-        hasSavedThisRun = true;
+
+        hasSavedThisRun = true; // 저장 중 잠금
         disableNameInput();
         if (saveBtn) saveBtn.disabled = true;
 
-        const n = nameInput.value.trim() || '무명';
-        // addRecord는 이제 runId를 인자로 받음
-        const didUpdate = addRecord(n, elapsed.toFixed(1), currentRunId);
+        // ✅ 이름 입력값 확정
+        const playerName = nameInput.value.trim();
+        const finalName = playerName !== '' ? playerName : '익명';
 
-        // populate 이후 사용자에게 피드백 주고 싶으면 여기서 처리
+        // ✅ 점수 기록 추가 (이 타이밍에만 addRecord 호출)
+        const didUpdate = addRecord(
+          finalName,
+          elapsed.toFixed(1),
+          currentRunId
+        );
+
+        // ✅ 리더보드 갱신
         populateLeaderboard();
 
-        // 포커스 제거(모바일에서 Done 누른 후 중복 발생 방지)
+        // ✅ 입력창 포커스 제거 (모바일에서 중복 발생 방지)
         try {
           nameInput.blur();
         } catch (e) {}
+
         return didUpdate;
       }
 
