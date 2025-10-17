@@ -996,6 +996,25 @@
         resetGame();
         lastFrame = performance.now();
         requestAnimationFrame(gameLoop);
+
+        /* ====== 탭 전환 / 백그라운드 감지 ====== */
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) {
+            // 백그라운드로 전환 → 일시정지
+            if (running) {
+              running = false;
+              console.log('게임 일시정지됨 (백그라운드 전환)');
+            }
+          } else {
+            // 다시 포그라운드로 → 재개
+            if (!running && overlay.getAttribute('aria-hidden') === 'true') {
+              console.log('게임 재개됨 (포그라운드 복귀)');
+              running = true;
+              lastFrame = performance.now();
+              requestAnimationFrame(gameLoop);
+            }
+          }
+        });
       }
     </script>
   </body>
