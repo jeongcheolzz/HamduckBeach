@@ -439,27 +439,182 @@
         return Math.random() * (max - min) + min;
       }
 
-      /* ====== 새 동작: 캘리브레이션 변수 (핸드폰 수평을 중립으로) ====== */
-      let calibration = null; // {g, b} 저장
-      let tilt = { x: 0, y: 0 }; // raw deg offsets (not normalized)
+      /* ====== 자이로(모션) 권한 + 처리 (iOS 대응 + 터치 폴백 포함) ====== */
+      let calibration = null; // {g, b}
+      let tilt = { x: 0, y: 0 };
       let useGyro = false;
+      let gyroEnabled = false; // 실제로 리스너가 붙었는지 여부
+      let gyroPromptEl = null;
 
+      // (1) 실제 이벤트 핸들러 — 값 검증/캘리브레이션 포함
       function handleOrientation(e) {
-        const g = typeof e.gamma === 'number' ? e.gamma : 0;
-        const b = typeof e.beta === 'number' ? e.beta : 0;
+        // e.gamma, e.beta 가 유효한 숫자인지 먼저 확인
+        const g = typeof e.gamma === 'number' ? e.gamma : null;
+        const b = typeof e.beta === 'number' ? e.beta : null;
 
-        // 최초 이벤트에서 캘리브레이션 저장 -> 그 자세가 '중립'
-        if (!calibration) {
-          calibration = { g, b };
+        if (g === null || b === null) {
+          // 유효하지 않음 → 사용 안 함
+          return;
         }
 
-        // tilt = current - calibration, clamped to [-40,40]
+        // 최초 이벤트에서 캘리브레이션을 저장 (중립)
+        if (!calibration) {
+          calibration = { g, b };
+          console.log('Gyro calibrated:', calibration);
+        }
+
+        // tilt 계산 및 클램핑
         tilt.x = Math.max(-40, Math.min(40, g - calibration.g));
         tilt.y = Math.max(-40, Math.min(40, b - calibration.b));
-
         useGyro = true;
+        // 디버그: HUD 우측 상단에 상태 표시 (선택)
+        if (displayTimerEl) {
+          displayTimerEl.dataset.g = tilt.x.toFixed(1);
+          displayTimerEl.dataset.b = tilt.y.toFixed(1);
+        }
       }
-      window.addEventListener('deviceorientation', handleOrientation, true);
+
+      // (2) iOS 권한 요청 + 리스너 부착 함수
+      function enableGyroWithPermission() {
+        // 이미 처리됐으면 무시
+        if (gyroEnabled) return Promise.resolve(true);
+
+        // iOS (DeviceOrientationEvent.requestPermission) 체크
+        if (
+          typeof DeviceMotionEvent !== 'undefined' &&
+          typeof DeviceMotionEvent.requestPermission === 'function'
+        ) {
+          // iOS: 사용자 제스처(버튼/터치)로 요청해야 함
+          return DeviceMotionEvent.requestPermission()
+            .then((result) => {
+              if (result === 'granted') {
+                attachGyroListener();
+                return true;
+              } else {
+                console.warn('Gyro permission denied on iOS:', result);
+                return false;
+              }
+            })
+            .catch((err) => {
+              console.error('Gyro permission request error:', err);
+              return false;
+            });
+        } else {
+          // 기타 브라우저: 바로 붙여도 됨(단, https 필요)
+          try {
+            attachGyroListener();
+            return Promise.resolve(true);
+          } catch (e) {
+            console.error('attachGyroListener failed:', e);
+            return Promise.resolve(false);
+          }
+        }
+      }
+
+      function attachGyroListener() {
+        if (gyroEnabled) return;
+        window.addEventListener('deviceorientation', handleOrientation, true);
+        gyroEnabled = true;
+        console.log('Gyro listener attached');
+        hideGyroPrompt();
+      }
+
+      // (3) 프롬프트 UI (사용자 제스처를 유도)
+      function showGyroPrompt() {
+        if (gyroPromptEl) return;
+        gyroPromptEl = document.createElement('div');
+        gyroPromptEl.style.position = 'absolute';
+        gyroPromptEl.style.left = '50%';
+        gyroPromptEl.style.top = '10vh';
+        gyroPromptEl.style.transform = 'translateX(-50%)';
+        gyroPromptEl.style.background = 'rgba(255,255,255,0.95)';
+        gyroPromptEl.style.padding = '8px 12px';
+        gyroPromptEl.style.borderRadius = '10px';
+        gyroPromptEl.style.zIndex = '60';
+        gyroPromptEl.style.fontSize = '14px';
+        gyroPromptEl.style.boxShadow = '0 6px 18px rgba(0,0,0,0.25)';
+        gyroPromptEl.textContent =
+          '자이로(기울기) 사용을 허용하려면 터치하세요';
+        gyroPromptEl.addEventListener('click', onGyroPromptClick);
+        document.getElementById('game-wrap').appendChild(gyroPromptEl);
+      }
+
+      function hideGyroPrompt() {
+        if (!gyroPromptEl) return;
+        try {
+          gyroPromptEl.removeEventListener('click', onGyroPromptClick);
+          gyroPromptEl.remove();
+        } catch (_) {}
+        gyroPromptEl = null;
+      }
+
+      function onGyroPromptClick() {
+        // 사용자 제스처 발생 — 권한 요청 시도
+        enableGyroWithPermission().then((granted) => {
+          if (granted) {
+            console.log('Gyro enabled by user gesture');
+            hideGyroPrompt();
+          } else {
+            console.warn('Gyro not enabled (user denied or unsupported)');
+            // 계속해서 터치 폴백 허용 — hide는 하지 않음
+          }
+        });
+      }
+
+      /* (4) 첫 사용자 제스처에 자동으로 권한 요청 시도 (안드로이드/iOS 안정성 향상) */
+      function setupGyroAutoRequest() {
+        const handler = (e) => {
+          // 첫 제스처에서 권한 요청 시도 (한 번만)
+          enableGyroWithPermission().then((granted) => {
+            if (!granted) {
+              // 허용 안 되면 프롬프트 노출
+              showGyroPrompt();
+            } else {
+              hideGyroPrompt();
+            }
+          });
+          window.removeEventListener('touchstart', handler);
+          window.removeEventListener('pointerdown', handler);
+        };
+        window.addEventListener('touchstart', handler, { once: true });
+        window.addEventListener('pointerdown', handler, { once: true });
+        // 추가로, 페이지 로드 직후 프롬프트도 보여줄 수 있음
+        showGyroPrompt();
+      }
+
+      // (5) 터치 폴백: 자이로가 없을 때 터치 드래그로 이동시키는 간단 대체 제어
+      let touchControlActive = false;
+      let touchLast = null;
+      function onPointerDownForTouchControl(e) {
+        touchControlActive = true;
+        touchLast = { x: e.clientX, y: e.clientY };
+      }
+      function onPointerMoveForTouchControl(e) {
+        if (!touchControlActive || useGyro) return;
+        if (!touchLast) {
+          touchLast = { x: e.clientX, y: e.clientY };
+          return;
+        }
+        const dx = e.clientX - touchLast.x;
+        const dy = e.clientY - touchLast.y;
+        // 이동량을 플레이어 속도에 조금 섞어서 자연스럽게 이동
+        player.vx += dx * 0.02;
+        player.vy += dy * 0.02;
+        touchLast = { x: e.clientX, y: e.clientY };
+      }
+      function onPointerUpForTouchControl(e) {
+        touchControlActive = false;
+        touchLast = null;
+      }
+
+      // 바인딩 (항상 붙여도 안전)
+      window.addEventListener('pointerdown', onPointerDownForTouchControl);
+      window.addEventListener('pointermove', onPointerMoveForTouchControl);
+      window.addEventListener('pointerup', onPointerUpForTouchControl);
+      window.addEventListener('pointercancel', onPointerUpForTouchControl);
+
+      // (6) 시작 시 자동 설정 호출 — startGameLoop 또는 초기화 시 호출
+      // setupGyroAutoRequest();  <-- startGameLoop()가 호출될 때 이 줄을 활성화하세요
 
       /* 키보드 fallback */
       const keys = {};
@@ -1062,6 +1217,8 @@
         window.addEventListener('pageshow', (e) => {
           if (e.persisted) resumeGame('pageshow(persisted)');
         });
+
+        setupGyroAutoRequest();
       }
     </script>
   </body>
