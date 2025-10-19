@@ -607,13 +607,14 @@
         touchControlActive = false;
         touchLast = null;
       }
-      */
+      
 
       // 바인딩 (항상 붙여도 안전)
       window.addEventListener('pointerdown', onPointerDownForTouchControl);
       window.addEventListener('pointermove', onPointerMoveForTouchControl);
       window.addEventListener('pointerup', onPointerUpForTouchControl);
       window.addEventListener('pointercancel', onPointerUpForTouchControl);
+      */
 
       // (6) 시작 시 자동 설정 호출 — startGameLoop 또는 초기화 시 호출
       // setupGyroAutoRequest();  <-- startGameLoop()가 호출될 때 이 줄을 활성화하세요
