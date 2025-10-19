@@ -290,7 +290,7 @@
   </head>
   <body>
     <div id="game-wrap">
-      <div id="hud">0.0s</div>
+      <div id="hud">0.00s</div>
 
       <!-- 사운드 컨트롤 표시(게임 화면에서도) -->
       <div class="sound-controls" id="soundControls">
@@ -318,7 +318,7 @@
       <div id="overlay" aria-hidden="true">
         <div id="modal" role="dialog" aria-modal="true">
           <h2>게임 종료</h2>
-          <div class="sub">생존 시간: <span id="finalTime">0.0</span> 초</div>
+          <div class="sub">생존 시간: <span id="finalTime">0.00</span> 초</div>
 
           <input
             id="nameInput"
@@ -534,7 +534,7 @@
         gyroPromptEl.style.fontSize = '14px';
         gyroPromptEl.style.boxShadow = '0 6px 18px rgba(0,0,0,0.25)';
         gyroPromptEl.textContent =
-          '자이로(기울기) 사용을 허용하려면 터치하세요 (시작할 때 핸드폰 각도가 움직일 때 기준)';
+          '자이로(기울기) 사용을 허용하려면 "이 텍스트 박스"를 터치하세요 (시작할 때 핸드폰 각도가 움직일 때 기준)';
         gyroPromptEl.addEventListener('click', onGyroPromptClick);
         document.getElementById('game-wrap').appendChild(gyroPromptEl);
       }
@@ -583,6 +583,7 @@
       }
 
       // (5) 터치 폴백: 자이로가 없을 때 터치 드래그로 이동시키는 간단 대체 제어
+      /*
       let touchControlActive = false;
       let touchLast = null;
       function onPointerDownForTouchControl(e) {
@@ -606,6 +607,7 @@
         touchControlActive = false;
         touchLast = null;
       }
+      */
 
       // 바인딩 (항상 붙여도 안전)
       window.addEventListener('pointerdown', onPointerDownForTouchControl);
@@ -617,6 +619,7 @@
       // setupGyroAutoRequest();  <-- startGameLoop()가 호출될 때 이 줄을 활성화하세요
 
       /* 키보드 fallback */
+      /*
       const keys = {};
       window.addEventListener('keydown', (e) => {
         keys[e.key.toLowerCase()] = true;
@@ -624,6 +627,7 @@
       window.addEventListener('keyup', (e) => {
         keys[e.key.toLowerCase()] = false;
       });
+      */
 
       /* 갈매기 생성: 화면 바깥에서 랜덤 위치, 시작 방향을 플레이어 쪽으로, 크기 3배 */
       function spawnBird() {
@@ -757,11 +761,13 @@
           accelY = normY * sensitivity;
         } else {
           // 키보드 fallback (데스크탑 테스트용)
+          /*
           const speed = Math.min(W, H) * 50;
           if (keys['arrowleft'] || keys['a']) accelX = -speed;
           if (keys['arrowright'] || keys['d']) accelX = speed;
           if (keys['arrowup'] || keys['w']) accelY = -speed;
           if (keys['arrowdown'] || keys['s']) accelY = speed;
+          */
         }
 
         // smoothing velocity & clamp
@@ -788,7 +794,7 @@
           }
         }
 
-        displayTimerEl.textContent = elapsed.toFixed(1) + 's';
+        displayTimerEl.textContent = elapsed.toFixed(2) + 's';
       }
 
       function render() {
@@ -850,7 +856,7 @@
 
       function endGame() {
         running = false;
-        finalTimeEl.textContent = elapsed.toFixed(1);
+        finalTimeEl.textContent = elapsed.toFixed(2);
         overlay.style.background = 'rgba(0,0,0,0.5)';
         overlay.setAttribute('aria-hidden', 'false');
         modal.classList.add('show');
@@ -979,7 +985,7 @@
           const t = document.createElement('td');
           t.className = 'time';
           t.style.textAlign = 'right';
-          t.textContent = Number(r.time).toFixed(1);
+          t.textContent = Number(r.time).toFixed(2);
 
           tr.appendChild(rankTd);
           tr.appendChild(nm);
@@ -1030,7 +1036,7 @@
         // ✅ 점수 기록 추가 (이 타이밍에만 addRecord 호출)
         const didUpdate = addRecord(
           finalName,
-          elapsed.toFixed(1),
+          elapsed.toFixed(2),
           currentRunId
         );
 
